@@ -23,6 +23,9 @@ local defaults = {
         },
         defaultChannel = "SAY",
         clearOnSend = false,
+        minimap = {
+            hide = false,
+        },
     },
 }
 
@@ -40,6 +43,9 @@ function WizzyWig:OnInitialize()
 
     -- Setup options
     self:SetupOptions()
+
+    -- Setup minimap button
+    self:SetupMinimapButton()
 
     self:Print("WizzyWig loaded! Type /ww for commands.")
 end
@@ -119,8 +125,32 @@ function WizzyWig:SetupOptions()
             },
             header2 = {
                 type = "header",
-                name = "Advanced",
+                name = "Minimap Button",
                 order = 6,
+            },
+            minimapHide = {
+                type = "toggle",
+                name = "Hide Minimap Button",
+                desc = "Hide the minimap button",
+                get = function() return self.db.profile.minimap.hide end,
+                set = function(info, value)
+                    self.db.profile.minimap.hide = value
+                    local LDBIcon = LibStub("LibDBIcon-1.0", true)
+                    if LDBIcon then
+                        if value then
+                            LDBIcon:Hide("WizzyWig")
+                        else
+                            LDBIcon:Show("WizzyWig")
+                        end
+                    end
+                    self:Print("Minimap button " .. (value and "hidden" or "shown"))
+                end,
+                order = 7,
+            },
+            header3 = {
+                type = "header",
+                name = "Advanced",
+                order = 8,
             },
             debugMode = {
                 type = "toggle",
@@ -131,13 +161,88 @@ function WizzyWig:SetupOptions()
                     self.db.profile.debugMode = value
                     self:Print("Debug mode " .. (value and "enabled" or "disabled"))
                 end,
-                order = 7,
+                order = 9,
             },
         },
     }
 
     AceConfig:RegisterOptionsTable("WizzyWig", options)
     AceConfigDialog:AddToBlizOptions("WizzyWig", "WizzyWig")
+end
+
+-- Setup minimap button
+function WizzyWig:SetupMinimapButton()
+    local LDB = LibStub("LibDataBroker-1.1", true)
+    local LDBIcon = LibStub("LibDBIcon-1.0", true)
+
+    if not LDB or not LDBIcon then
+        self:Print("Warning: Minimap button libraries not found")
+        return
+    end
+
+    -- Create LibDataBroker data source
+    local minimapButton = LDB:NewDataObject("WizzyWig", {
+        type = "launcher",
+        text = "WizzyWig",
+        icon = "Interface\\Icons\\INV_Misc_Book_11",
+        OnClick = function(clickedframe, button)
+            if button == "LeftButton" then
+                self:ToggleMainFrame()
+            elseif button == "RightButton" then
+                self:ShowMinimapMenu(clickedframe)
+            end
+        end,
+        OnTooltipShow = function(tooltip)
+            if not tooltip or not tooltip.AddLine then return end
+            tooltip:AddLine("WizzyWig")
+            tooltip:AddLine("|cFFFFFFFFLeft-click:|r Toggle editor", 0.7, 0.7, 0.7)
+            tooltip:AddLine("|cFFFFFFFFRight-click:|r Show menu", 0.7, 0.7, 0.7)
+        end,
+    })
+
+    -- Register with LibDBIcon
+    LDBIcon:Register("WizzyWig", minimapButton, self.db.profile.minimap)
+end
+
+-- Toggle main frame (for minimap button)
+function WizzyWig:ToggleMainFrame()
+    if mainFrame and mainFrame:IsShown() then
+        mainFrame:Hide()
+    else
+        self:ShowMainFrame()
+    end
+end
+
+-- Show minimap button menu
+function WizzyWig:ShowMinimapMenu(frame)
+    local menu = {
+        {
+            text = "WizzyWig",
+            isTitle = true,
+            notCheckable = true,
+        },
+        {
+            text = "Toggle Editor",
+            func = function() self:ToggleMainFrame() end,
+            notCheckable = true,
+        },
+        {
+            text = "Settings",
+            func = function()
+                InterfaceOptionsFrame_OpenToCategory("WizzyWig")
+                InterfaceOptionsFrame_OpenToCategory("WizzyWig")
+            end,
+            notCheckable = true,
+        },
+        {
+            text = "Close",
+            func = function() end,
+            notCheckable = true,
+        },
+    }
+
+    local menuFrame = CreateFrame("Frame", "WizzyWigMinimapMenu", UIParent, "UIDropDownMenuTemplate")
+    EasyMenu(menu, menuFrame, "cursor", 0, 0, "MENU")
 end
 
 -- Slash command handler
