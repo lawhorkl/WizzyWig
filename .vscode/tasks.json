@@ -1,0 +1,99 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Addon (Development)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "./release.sh",
+                "-d"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Build addon in development mode with all libraries embedded"
+        },
+        {
+            "label": "Package Addon (Release)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "./release.sh",
+                "-r"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "group": "build",
+            "detail": "Create release package (requires git tag)"
+        },
+        {
+            "label": "Build Addon (Local Only)",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "./release.sh",
+                "-z"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "group": "build",
+            "detail": "Build zip file locally without uploading"
+        },
+        {
+            "label": "Clean Build Artifacts",
+            "type": "shell",
+            "command": "bash",
+            "args": [
+                "-c",
+                "rm -rf .release Libs *.zip"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "detail": "Remove build artifacts and downloaded libraries"
+        }
+    ]
+}

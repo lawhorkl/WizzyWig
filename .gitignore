@@ -1,1 +1,20 @@
 .claude/
+
+# Ignore embedded libraries (they will be auto-downloaded by packager)
+Libs/
+
+# Ignore packaged releases and build artifacts
+*.zip
+.release/
+
+# IDE/Editor files
+.vscode/*
+!.vscode/tasks.json
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# WoW saved variables (for testing)
+WizzyWigDB.lua
