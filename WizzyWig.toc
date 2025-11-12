@@ -1,12 +1,12 @@
 ## Interface: 110002
 ## Title: WizzyWig
 ## Notes: WYSIWYG chat editor for roleplayers - see your full emote before sending
-## Author: YourName
+## Author: Kyle Lawhorn
 ## Version: @project-version@
 ## SavedVariables: WizzyWigDB
 ## OptionalDeps: Ace3
 ## X-Category: Roleplay
-## X-Website: https://github.com/yourusername/WizzyWig
+## X-Website: https://github.com/lawhorkl/WizzyWig
 ## X-Curse-Project-ID:
 ## X-WoWI-ID:
 
