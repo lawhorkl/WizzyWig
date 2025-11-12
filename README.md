@@ -1,14 +1,14 @@
 # WizzyWig
 
-A World of Warcraft addon built with Ace3 libraries.
+A WYSIWYG-style chat editor for World of Warcraft roleplayers. See your full emote before sending it!
 
 ## Features
 
-- Pure Lua implementation (no XML)
-- AceGUI for dynamic frame creation
-- AceConfig for in-game options panel
-- AceDB for profile-based saved variables
-- Slash commands for easy access
+- Large multiline text editor for composing emotes and messages
+- Channel selector (Say, Emote, Party, Raid)
+- Send messages with a single button click
+- Built with Ace3 libraries for reliability and performance
+- Works seamlessly with EmoteSplitter for long messages
 
 ## Development
 
@@ -60,16 +60,22 @@ After building, the packaged addon will be in the `.release/` directory. Copy th
 
 ### Slash Commands
 
-- `/ww` or `/wizzywing` - Show help
-- `/ww show` - Show main frame
-- `/ww config` - Open config panel
-- `/ww toggle` - Toggle addon on/off
-- `/ww status` - Show current status
-- `/ww debug` - Toggle debug mode
+- `/ww` or `/ww show` - Open the chat editor
+- `/ww config` - Open settings panel
+- `/ww toggle` - Enable/disable addon
+- `/ww help` - Show command list
+
+### How to Use
+
+1. Type `/ww` to open the editor window
+2. Write your emote or message in the large text box
+3. Select your desired channel from the dropdown (Say, Emote, Party, or Raid)
+4. Click "Send" to post your message
+5. The editor remains open for your next message
 
 ### In-Game Configuration
 
-Access the configuration panel via:
+Access settings via:
 - Slash command: `/ww config`
 - Game Menu: ESC > Interface > AddOns > WizzyWig
 

@@ -1,11 +1,11 @@
 ## Interface: 110002
 ## Title: WizzyWig
-## Notes: A World of Warcraft addon
+## Notes: WYSIWYG chat editor for roleplayers - see your full emote before sending
 ## Author: YourName
 ## Version: @project-version@
 ## SavedVariables: WizzyWigDB
 ## OptionalDeps: Ace3
-## X-Category: Miscellaneous
+## X-Category: Roleplay
 ## X-Website: https://github.com/yourusername/WizzyWig
 ## X-Curse-Project-ID:
 ## X-WoWI-ID:

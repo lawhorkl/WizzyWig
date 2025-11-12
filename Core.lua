@@ -17,6 +17,12 @@ local defaults = {
             x = 0,
             y = 0,
         },
+        frameSize = {
+            width = 500,
+            height = 400,
+        },
+        defaultChannel = "SAY",
+        clearOnSend = false,
     },
 }
 
@@ -71,6 +77,51 @@ function WizzyWig:SetupOptions()
                 end,
                 order = 1,
             },
+            showFrame = {
+                type = "execute",
+                name = "Open Chat Editor",
+                desc = "Open the RP chat editor window",
+                func = function() self:ShowMainFrame() end,
+                order = 2,
+            },
+            header1 = {
+                type = "header",
+                name = "Editor Settings",
+                order = 3,
+            },
+            defaultChannel = {
+                type = "select",
+                name = "Default Channel",
+                desc = "The default channel selected when opening the editor",
+                values = {
+                    ["SAY"] = "Say",
+                    ["EMOTE"] = "Emote",
+                    ["PARTY"] = "Party",
+                    ["RAID"] = "Raid",
+                },
+                get = function() return self.db.profile.defaultChannel end,
+                set = function(info, value)
+                    self.db.profile.defaultChannel = value
+                    self:Print("Default channel set to: " .. value)
+                end,
+                order = 4,
+            },
+            clearOnSend = {
+                type = "toggle",
+                name = "Clear on Send",
+                desc = "Automatically clear the text box after sending a message",
+                get = function() return self.db.profile.clearOnSend end,
+                set = function(info, value)
+                    self.db.profile.clearOnSend = value
+                    self:Print("Clear on send " .. (value and "enabled" or "disabled"))
+                end,
+                order = 5,
+            },
+            header2 = {
+                type = "header",
+                name = "Advanced",
+                order = 6,
+            },
             debugMode = {
                 type = "toggle",
                 name = "Debug Mode",
@@ -80,14 +131,7 @@ function WizzyWig:SetupOptions()
                     self.db.profile.debugMode = value
                     self:Print("Debug mode " .. (value and "enabled" or "disabled"))
                 end,
-                order = 2,
-            },
-            showFrame = {
-                type = "execute",
-                name = "Show Main Frame",
-                desc = "Open the main addon frame",
-                func = function() self:ShowMainFrame() end,
-                order = 3,
+                order = 7,
             },
         },
     }
@@ -141,11 +185,11 @@ function WizzyWig:ShowMainFrame()
 
     -- Create new frame
     mainFrame = AceGUI:Create("Frame")
-    mainFrame:SetTitle("WizzyWig")
-    mainFrame:SetStatusText("Status: Ready")
-    mainFrame:SetWidth(400)
-    mainFrame:SetHeight(300)
-    mainFrame:SetLayout("Flow")
+    mainFrame:SetTitle("WizzyWig - RP Chat Editor")
+    mainFrame:SetStatusText("Ready to compose")
+    mainFrame:SetWidth(self.db.profile.frameSize.width)
+    mainFrame:SetHeight(self.db.profile.frameSize.height)
+    mainFrame:SetLayout("Fill")
 
     -- Position frame
     local pos = self.db.profile.framePosition
@@ -169,74 +213,125 @@ end
 
 -- Populate the main frame with widgets
 function WizzyWig:PopulateMainFrame(container)
-    -- Heading
-    local heading = AceGUI:Create("Heading")
-    heading:SetText("Welcome to WizzyWig")
-    heading:SetFullWidth(true)
-    container:AddChild(heading)
+    -- Create a vertical container for the layout
+    local mainContainer = AceGUI:Create("SimpleGroup")
+    mainContainer:SetFullWidth(true)
+    mainContainer:SetFullHeight(true)
+    mainContainer:SetLayout("Flow")
+    container:AddChild(mainContainer)
 
-    -- Label
-    local label = AceGUI:Create("Label")
-    label:SetText("This is an example frame created with AceGUI.\n\nYou can add any widgets you need here.")
-    label:SetFullWidth(true)
-    label:SetFontObject(GameFontHighlight)
-    container:AddChild(label)
+    -- MultiLine EditBox for message composition (takes most of the space)
+    local editBox = AceGUI:Create("MultiLineEditBox")
+    editBox:SetLabel("Compose your message:")
+    editBox:SetFullWidth(true)
+    editBox:SetNumLines(15)
+    editBox:DisableButton(true)
+    editBox:SetText("")
+    mainContainer:AddChild(editBox)
 
-    -- Spacer
-    local spacer = AceGUI:Create("Label")
-    spacer:SetText(" ")
-    spacer:SetFullWidth(true)
-    container:AddChild(spacer)
+    -- Store reference for send function
+    mainContainer.editBox = editBox
 
-    -- Example EditBox
-    local editbox = AceGUI:Create("EditBox")
-    editbox:SetLabel("Enter Text:")
-    editbox:SetFullWidth(true)
-    editbox:SetCallback("OnEnterPressed", function(widget, event, text)
-        self:Print("You entered: " .. text)
+    -- Bottom controls container
+    local controlsGroup = AceGUI:Create("SimpleGroup")
+    controlsGroup:SetFullWidth(true)
+    controlsGroup:SetLayout("Flow")
+    mainContainer:AddChild(controlsGroup)
+
+    -- Channel dropdown
+    local channelDropdown = AceGUI:Create("Dropdown")
+    channelDropdown:SetLabel("Channel:")
+    channelDropdown:SetWidth(150)
+    channelDropdown:SetList({
+        ["SAY"] = "Say",
+        ["EMOTE"] = "Emote",
+        ["PARTY"] = "Party",
+        ["RAID"] = "Raid",
+    })
+    channelDropdown:SetValue(self.db.profile.defaultChannel)
+    channelDropdown:SetCallback("OnValueChanged", function(widget, event, key)
+        self.db.profile.defaultChannel = key
+        self:DebugPrint("Channel changed to: " .. key)
     end)
-    container:AddChild(editbox)
+    controlsGroup:AddChild(channelDropdown)
 
-    -- Example CheckBox
-    local checkbox = AceGUI:Create("CheckBox")
-    checkbox:SetLabel("Enable Feature")
-    checkbox:SetValue(self.db.profile.enabled)
-    checkbox:SetCallback("OnValueChanged", function(widget, event, value)
-        self.db.profile.enabled = value
-        self:Print("Feature " .. (value and "enabled" or "disabled"))
-    end)
-    container:AddChild(checkbox)
+    -- Store reference for send function
+    mainContainer.channelDropdown = channelDropdown
 
-    -- Example Button
-    local button = AceGUI:Create("Button")
-    button:SetText("Click Me!")
-    button:SetWidth(150)
-    button:SetCallback("OnClick", function()
-        self:Print("Button clicked!")
-        self:ExampleFunction()
-    end)
-    container:AddChild(button)
-
-    -- Close button
-    local closeButton = AceGUI:Create("Button")
-    closeButton:SetText("Close")
-    closeButton:SetWidth(100)
-    closeButton:SetCallback("OnClick", function()
-        if mainFrame then
-            mainFrame:Hide()
+    -- Send button
+    local sendButton = AceGUI:Create("Button")
+    sendButton:SetText("Send Message")
+    sendButton:SetWidth(150)
+    sendButton:SetCallback("OnClick", function()
+        self:SendMessage(editBox:GetText(), channelDropdown:GetValue())
+        if self.db.profile.clearOnSend then
+            editBox:SetText("")
         end
+        editBox:SetFocus()
     end)
-    container:AddChild(closeButton)
+    controlsGroup:AddChild(sendButton)
+
+    -- Clear button
+    local clearButton = AceGUI:Create("Button")
+    clearButton:SetText("Clear")
+    clearButton:SetWidth(100)
+    clearButton:SetCallback("OnClick", function()
+        editBox:SetText("")
+        editBox:SetFocus()
+    end)
+    controlsGroup:AddChild(clearButton)
+
+    -- Set focus to edit box
+    editBox:SetFocus()
 end
 
--- Example function
-function WizzyWig:ExampleFunction()
-    if not self.db.profile.enabled then return end
+-- Send message to specified channel
+function WizzyWig:SendMessage(message, channel)
+    if not self.db.profile.enabled then
+        self:Print("Addon is disabled")
+        return
+    end
 
-    self:Print("Example function called!")
+    -- Trim whitespace
+    message = strtrim(message)
 
-    if self.db.profile.debugMode then
-        self:Print("Debug: This is debug information")
+    -- Check for empty message
+    if message == "" then
+        self:Print("Cannot send empty message")
+        return
+    end
+
+    -- Send to appropriate channel
+    if channel == "SAY" then
+        SendChatMessage(message, "SAY")
+        self:DebugPrint("Sent to Say: " .. message)
+    elseif channel == "EMOTE" then
+        SendChatMessage(message, "EMOTE")
+        self:DebugPrint("Sent to Emote: " .. message)
+    elseif channel == "PARTY" then
+        if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid(LE_PARTY_CATEGORY_HOME) then
+            SendChatMessage(message, "PARTY")
+            self:DebugPrint("Sent to Party: " .. message)
+        else
+            self:Print("You are not in a party!")
+            return
+        end
+    elseif channel == "RAID" then
+        if IsInRaid(LE_PARTY_CATEGORY_HOME) then
+            SendChatMessage(message, "RAID")
+            self:DebugPrint("Sent to Raid: " .. message)
+        else
+            self:Print("You are not in a raid!")
+            return
+        end
+    else
+        self:Print("Unknown channel: " .. tostring(channel))
+        return
+    end
+
+    -- Update status
+    if mainFrame then
+        mainFrame:SetStatusText("Message sent to " .. channel)
     end
 end
 
