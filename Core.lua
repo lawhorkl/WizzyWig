@@ -296,6 +296,18 @@ function WizzyWig:ShowMainFrame()
     mainFrame:SetHeight(self.db.profile.frameSize.height)
     mainFrame:SetLayout("Fill")
 
+    -- Disable frame resizing
+    mainFrame.frame:SetResizable(false)
+    if mainFrame.sizer_se then
+        mainFrame.sizer_se:Hide()
+    end
+    if mainFrame.sizer_s then
+        mainFrame.sizer_s:Hide()
+    end
+    if mainFrame.sizer_e then
+        mainFrame.sizer_e:Hide()
+    end
+
     -- Position frame
     local pos = self.db.profile.framePosition
     mainFrame:SetPoint(pos.point, UIParent, pos.point, pos.x, pos.y)
