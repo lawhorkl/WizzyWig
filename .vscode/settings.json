@@ -1,0 +1,33 @@
+{
+    "Lua.diagnostics.globals": [
+        "WizzyWig",
+        "LE_PARTY_CATEGORY_HOME",
+        "LibStub",
+        "EasyMenu",
+        "InterfaceOptionsFrame_OpenToCategory",
+        "UIParent",
+        "SendChatMessage"
+    ],
+    "Lua.runtime.version": "Lua 5.1",
+    "Lua.workspace.checkThirdParty": false,
+    "Lua.runtime.builtin": {
+        "basic": "disable",
+        "debug": "disable",
+        "io": "disable",
+        "math": "disable",
+        "os": "disable",
+        "package": "disable",
+        "string": "disable",
+        "table": "disable",
+        "utf8": "disable"
+    },
+    "Lua.workspace.library": [
+        "~\\.vscode\\extensions\\ketho.wow-api-0.21.0\\Annotations\\Core"
+    ],
+    "Lua.diagnostics.disable": [
+        "assign-type-mismatch"
+    ],
+    "Lua.hint.enable": true,
+    "Lua.hint.setType": true,
+    "Lua.completion.callSnippet": "Replace"
+}

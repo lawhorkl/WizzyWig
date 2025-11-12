@@ -331,6 +331,7 @@ end
 -- Populate the main frame with widgets
 function WizzyWig:PopulateMainFrame(container)
     -- Create a vertical container for the layout
+    ---@type MainContainer
     local mainContainer = AceGUI:Create("SimpleGroup")
     mainContainer:SetFullWidth(true)
     mainContainer:SetFullHeight(true)

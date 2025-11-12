@@ -44,6 +44,7 @@ ignore:
   - .vscode
   - .release
   - release.sh
+  - types.lua
   - "*.zip"
 
 # Enable changelog generation from git commits

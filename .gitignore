@@ -10,6 +10,7 @@ Libs/
 # IDE/Editor files
 .vscode/*
 !.vscode/tasks.json
+!.vscode/settings.json
 .idea/
 
 # OS files
