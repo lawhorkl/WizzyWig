@@ -70,6 +70,13 @@ end
 function WizzyWig:OnEnable()
     self:Print("WizzyWig enabled!")
 
+    -- Check for EmoteSplitter addon
+    local emoteSplitterLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("EmoteSplitter")) or (IsAddOnLoaded and IsAddOnLoaded("EmoteSplitter"))
+
+    if not emoteSplitterLoaded then
+        self:Print("|cFFFF0000WARNING: EmoteSplitter addon not found! WizzyWig is limited to the in-game chat message limit without it.|r")
+    end
+
     -- Show welcome popup for first-time users
     if self.db.profile.firstRun then
         local welcomePopup = WizzyWig.WelcomePopup:New(self)

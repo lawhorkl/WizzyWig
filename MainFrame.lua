@@ -74,6 +74,13 @@ function MainFrame:Populate(container)
     editBox:DisableButton(true)
     editBox:SetText("")
 
+    -- Enforce character limit if EmoteSplitter is not loaded
+    local emoteSplitterLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("EmoteSplitter")) or (IsAddOnLoaded and IsAddOnLoaded("EmoteSplitter"))
+    if not emoteSplitterLoaded then
+        editBox:SetMaxLetters(255) -- WoW chat message limit
+        editBox:SetLabel("Compose your message (255 char limit - EmoteSplitter not found):")
+    end
+
     -- Store reference for send function
     mainContainer.editBox = editBox
 
