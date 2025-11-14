@@ -215,7 +215,7 @@ function WizzyWig:SetupMinimapButton()
     local minimapButton = LDB:NewDataObject("WizzyWig", {
         type = "launcher",
         text = "WizzyWig",
-        icon = "Interface\\Icons\\INV_Misc_Book_11",
+        icon = "Interface\\AddOns\\WizzyWig\\Media\\minimapIcon",
         OnClick = function(clickedframe, button)
             if button == "LeftButton" then
                 self:ToggleMainFrame()
