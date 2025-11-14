@@ -3,7 +3,6 @@ local addonName, addon = ...
 
 -- Create main addon using Ace3
 WizzyWig = LibStub("AceAddon-3.0"):NewAddon("WizzyWig", "AceConsole-3.0", "AceEvent-3.0")
-local AceGUI = LibStub("AceGUI-3.0")
 local AceConfig = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 
@@ -29,13 +28,13 @@ local defaults = {
     },
 }
 
--- Main frame reference
-local mainFrame = nil
-
 -- Initialize function
 function WizzyWig:OnInitialize()
     -- Initialize saved variables with defaults
     self.db = LibStub("AceDB-3.0"):New("WizzyWigDB", defaults, true)
+
+    -- Create MainFrame object
+    self.mainFrame = WizzyWig.MainFrame:New(self)
 
     -- Register slash commands
     self:RegisterChatCommand("wizzywing", "SlashCommand")
@@ -61,8 +60,8 @@ end
 -- Disable function (called when player logs out)
 function WizzyWig:OnDisable()
     -- Cleanup code here
-    if mainFrame then
-        mainFrame:Hide()
+    if self.mainFrame then
+        self.mainFrame:Hide()
     end
 end
 
@@ -206,11 +205,7 @@ end
 
 -- Toggle main frame (for minimap button)
 function WizzyWig:ToggleMainFrame()
-    if mainFrame and mainFrame:IsShown() then
-        mainFrame:Hide()
-    else
-        self:ShowMainFrame()
-    end
+    self.mainFrame:Toggle()
 end
 
 -- Show minimap button menu
@@ -276,232 +271,9 @@ function WizzyWig:SlashCommand(input)
 end
 
 -- Create and show main frame using AceGUI
+-- Show the main frame (delegates to MainFrame object)
 function WizzyWig:ShowMainFrame()
-    if not self.db.profile.enabled then
-        self:Print("Addon is disabled. Enable it first with /ww toggle")
-        return
-    end
-
-    -- If frame already exists, just show it
-    if mainFrame then
-        mainFrame:Show()
-        return
-    end
-
-    -- Create new frame
-    mainFrame = AceGUI:Create("Frame")
-    mainFrame:SetTitle("WizzyWig - RP Chat Editor")
-    mainFrame:SetStatusText("Ready to compose")
-    mainFrame:SetWidth(self.db.profile.frameSize.width)
-    mainFrame:SetHeight(self.db.profile.frameSize.height)
-    mainFrame:SetLayout("Fill")
-
-    -- Disable frame resizing
-    mainFrame.frame:SetResizable(false)
-    if mainFrame.sizer_se then
-        mainFrame.sizer_se:Hide()
-    end
-    if mainFrame.sizer_s then
-        mainFrame.sizer_s:Hide()
-    end
-    if mainFrame.sizer_e then
-        mainFrame.sizer_e:Hide()
-    end
-
-    -- Position frame
-    local pos = self.db.profile.framePosition
-    mainFrame:SetPoint(pos.point, UIParent, pos.point, pos.x, pos.y)
-
-    -- Save position when frame is moved
-    mainFrame:SetCallback("OnClose", function(widget)
-        local point, _, _, x, y = widget.frame:GetPoint()
-        self.db.profile.framePosition = {
-            point = point,
-            x = x,
-            y = y,
-        }
-        AceGUI:Release(widget)
-        mainFrame = nil
-    end)
-
-    -- Add content to frame
-    self:PopulateMainFrame(mainFrame)
-end
-
--- Setup toolbar with raid icons and other controls
-local function SetupToolbar(self, container, editBox)
-    -- Create toolbar container
-    local toolbar = AceGUI:Create("SimpleGroup")
-    toolbar:SetFullWidth(true)
-    toolbar:SetLayout("Flow")
-    container:AddChild(toolbar)
-
-    -- Add raid icon buttons (reversed order: 8 to 1)
-    for i = 8, 1, -1 do
-        local btn = AceGUI:Create("Button")
-        btn:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_" .. i .. ":16|t")
-        btn:SetWidth(50)
-        btn:SetCallback("OnClick", function()
-            -- Get current cursor position
-            local cursorPos = editBox.editBox:GetCursorPosition()
-            local text = editBox:GetText()
-
-            -- Insert texture markup at cursor position (displays icon in edit box)
-            local iconMarkup = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_" .. i .. ":12|t"
-            local before = text:sub(1, cursorPos)
-            local after = text:sub(cursorPos + 1)
-            local newText = before .. iconMarkup .. after
-
-            editBox:SetText(newText)
-            editBox.editBox:SetCursorPosition(cursorPos + string.len(iconMarkup))
-            editBox:SetFocus()
-        end)
-        toolbar:AddChild(btn)
-    end
-end
-
--- Populate the main frame with widgets
-function WizzyWig:PopulateMainFrame(container)
-    -- Create a vertical container for the layout
-    ---@type MainContainer
-    local mainContainer = AceGUI:Create("SimpleGroup")
-    mainContainer:SetFullWidth(true)
-    mainContainer:SetFullHeight(true)
-    mainContainer:SetLayout("Flow")
-    container:AddChild(mainContainer)
-
-    -- MultiLine EditBox for message composition (takes most of the space)
-    local editBox = AceGUI:Create("MultiLineEditBox")
-    editBox:SetLabel("Compose your message:")
-    editBox:SetFullWidth(true)
-    editBox:SetNumLines(15)
-    editBox:DisableButton(true)
-    editBox:SetText("")
-
-    -- Store reference for send function
-    mainContainer.editBox = editBox
-
-    -- Setup toolbar above the editbox
-    SetupToolbar(self, mainContainer, editBox)
-
-    -- Add editBox after toolbar
-    mainContainer:AddChild(editBox)
-
-    -- Bottom controls container
-    local controlsGroup = AceGUI:Create("SimpleGroup")
-    controlsGroup:SetFullWidth(true)
-    controlsGroup:SetLayout("Flow")
-    mainContainer:AddChild(controlsGroup)
-
-    -- Channel dropdown
-    local channelDropdown = AceGUI:Create("Dropdown")
-    channelDropdown:SetLabel("Channel:")
-    channelDropdown:SetWidth(150)
-    channelDropdown:SetList({
-        ["SAY"] = "Say",
-        ["EMOTE"] = "Emote",
-        ["PARTY"] = "Party",
-        ["RAID"] = "Raid",
-    })
-    channelDropdown:SetValue(self.db.profile.defaultChannel)
-    channelDropdown:SetCallback("OnValueChanged", function(widget, event, key)
-        self.db.profile.defaultChannel = key
-        self:DebugPrint("Channel changed to: " .. key)
-    end)
-    controlsGroup:AddChild(channelDropdown)
-
-    -- Store reference for send function
-    mainContainer.channelDropdown = channelDropdown
-
-    -- Send button
-    local sendButton = AceGUI:Create("Button")
-    sendButton:SetText("Send Message")
-    sendButton:SetWidth(150)
-    sendButton:SetCallback("OnClick", function()
-        self:SendMessage(editBox:GetText(), channelDropdown:GetValue())
-        if self.db.profile.clearOnSend then
-            editBox:SetText("")
-        end
-        editBox:SetFocus()
-    end)
-    controlsGroup:AddChild(sendButton)
-
-    -- Clear button
-    local clearButton = AceGUI:Create("Button")
-    clearButton:SetText("Clear")
-    clearButton:SetWidth(100)
-    clearButton:SetCallback("OnClick", function()
-        editBox:SetText("")
-        editBox:SetFocus()
-    end)
-    controlsGroup:AddChild(clearButton)
-
-    -- Set focus to edit box
-    editBox:SetFocus()
-end
-
--- Convert texture markup to chat codes for sending
-local function ConvertIconsForChat(message)
-    -- Convert texture markup |TInterface\TargetingFrame\UI-RaidTargetingIcon_#:12|t to {rt#}
-    for i = 1, 8 do
-        -- Escape special pattern characters: | and -
-        local pattern = "%|TInterface\\TargetingFrame\\UI%-RaidTargetingIcon_" .. i .. ":12%|t"
-        message = message:gsub(pattern, "{rt" .. i .. "}")
-    end
-    return message
-end
-
--- Send message to specified channel
-function WizzyWig:SendMessage(message, channel)
-    if not self.db.profile.enabled then
-        self:Print("Addon is disabled")
-        return
-    end
-
-    -- Trim whitespace
-    message = strtrim(message)
-
-    -- Check for empty message
-    if message == "" then
-        self:Print("Cannot send empty message")
-        return
-    end
-
-    -- Convert texture markup to chat codes
-    message = ConvertIconsForChat(message)
-
-    -- Send to appropriate channel
-    if channel == "SAY" then
-        SendChatMessage(message, "SAY")
-        self:DebugPrint("Sent to Say: " .. message)
-    elseif channel == "EMOTE" then
-        SendChatMessage(message, "EMOTE")
-        self:DebugPrint("Sent to Emote: " .. message)
-    elseif channel == "PARTY" then
-        if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid(LE_PARTY_CATEGORY_HOME) then
-            SendChatMessage(message, "PARTY")
-            self:DebugPrint("Sent to Party: " .. message)
-        else
-            self:Print("You are not in a party!")
-            return
-        end
-    elseif channel == "RAID" then
-        if IsInRaid(LE_PARTY_CATEGORY_HOME) then
-            SendChatMessage(message, "RAID")
-            self:DebugPrint("Sent to Raid: " .. message)
-        else
-            self:Print("You are not in a raid!")
-            return
-        end
-    else
-        self:Print("Unknown channel: " .. tostring(channel))
-        return
-    end
-
-    -- Update status
-    if mainFrame then
-        mainFrame:SetStatusText("Message sent to " .. channel)
-    end
+    self.mainFrame:Show()
 end
 
 -- Debug print function
