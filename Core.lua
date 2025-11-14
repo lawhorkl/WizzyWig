@@ -346,13 +346,14 @@ local function SetupToolbar(self, container, editBox)
             local cursorPos = editBox.editBox:GetCursorPosition()
             local text = editBox:GetText()
 
-            -- Insert {rt#} at cursor position
+            -- Insert texture markup at cursor position (displays icon in edit box)
+            local iconMarkup = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_" .. i .. ":12|t"
             local before = text:sub(1, cursorPos)
             local after = text:sub(cursorPos + 1)
-            local newText = before .. "{rt" .. i .. "}" .. after
+            local newText = before .. iconMarkup .. after
 
             editBox:SetText(newText)
-            editBox.editBox:SetCursorPosition(cursorPos + 5) -- Move cursor after {rt#}
+            editBox.editBox:SetCursorPosition(cursorPos + string.len(iconMarkup))
             editBox:SetFocus()
         end)
         toolbar:AddChild(btn)
@@ -439,6 +440,17 @@ function WizzyWig:PopulateMainFrame(container)
     editBox:SetFocus()
 end
 
+-- Convert texture markup to chat codes for sending
+local function ConvertIconsForChat(message)
+    -- Convert texture markup |TInterface\TargetingFrame\UI-RaidTargetingIcon_#:12|t to {rt#}
+    for i = 1, 8 do
+        -- Escape special pattern characters: | and -
+        local pattern = "%|TInterface\\TargetingFrame\\UI%-RaidTargetingIcon_" .. i .. ":12%|t"
+        message = message:gsub(pattern, "{rt" .. i .. "}")
+    end
+    return message
+end
+
 -- Send message to specified channel
 function WizzyWig:SendMessage(message, channel)
     if not self.db.profile.enabled then
@@ -454,6 +466,9 @@ function WizzyWig:SendMessage(message, channel)
         self:Print("Cannot send empty message")
         return
     end
+
+    -- Convert texture markup to chat codes
+    message = ConvertIconsForChat(message)
 
     -- Send to appropriate channel
     if channel == "SAY" then
