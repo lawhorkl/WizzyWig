@@ -328,6 +328,37 @@ function WizzyWig:ShowMainFrame()
     self:PopulateMainFrame(mainFrame)
 end
 
+-- Setup toolbar with raid icons and other controls
+local function SetupToolbar(self, container, editBox)
+    -- Create toolbar container
+    local toolbar = AceGUI:Create("SimpleGroup")
+    toolbar:SetFullWidth(true)
+    toolbar:SetLayout("Flow")
+    container:AddChild(toolbar)
+
+    -- Add raid icon buttons (reversed order: 8 to 1)
+    for i = 8, 1, -1 do
+        local btn = AceGUI:Create("Button")
+        btn:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_" .. i .. ":16|t")
+        btn:SetWidth(50)
+        btn:SetCallback("OnClick", function()
+            -- Get current cursor position
+            local cursorPos = editBox.editBox:GetCursorPosition()
+            local text = editBox:GetText()
+
+            -- Insert {rt#} at cursor position
+            local before = text:sub(1, cursorPos)
+            local after = text:sub(cursorPos + 1)
+            local newText = before .. "{rt" .. i .. "}" .. after
+
+            editBox:SetText(newText)
+            editBox.editBox:SetCursorPosition(cursorPos + 5) -- Move cursor after {rt#}
+            editBox:SetFocus()
+        end)
+        toolbar:AddChild(btn)
+    end
+end
+
 -- Populate the main frame with widgets
 function WizzyWig:PopulateMainFrame(container)
     -- Create a vertical container for the layout
@@ -345,10 +376,15 @@ function WizzyWig:PopulateMainFrame(container)
     editBox:SetNumLines(15)
     editBox:DisableButton(true)
     editBox:SetText("")
-    mainContainer:AddChild(editBox)
 
     -- Store reference for send function
     mainContainer.editBox = editBox
+
+    -- Setup toolbar above the editbox
+    SetupToolbar(self, mainContainer, editBox)
+
+    -- Add editBox after toolbar
+    mainContainer:AddChild(editBox)
 
     -- Bottom controls container
     local controlsGroup = AceGUI:Create("SimpleGroup")
