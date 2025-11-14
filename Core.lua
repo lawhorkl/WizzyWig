@@ -240,36 +240,10 @@ function WizzyWig:ToggleMainFrame()
     self.mainFrame:Toggle()
 end
 
--- Show minimap button menu
+-- Show minimap button menu (opens settings)
 function WizzyWig:ShowMinimapMenu(frame)
-    local menu = {
-        {
-            text = "WizzyWig",
-            isTitle = true,
-            notCheckable = true,
-        },
-        {
-            text = "Toggle Editor",
-            func = function() self:ToggleMainFrame() end,
-            notCheckable = true,
-        },
-        {
-            text = "Settings",
-            func = function()
-                InterfaceOptionsFrame_OpenToCategory("WizzyWig")
-                InterfaceOptionsFrame_OpenToCategory("WizzyWig")
-            end,
-            notCheckable = true,
-        },
-        {
-            text = "Close",
-            func = function() end,
-            notCheckable = true,
-        },
-    }
-
-    local menuFrame = CreateFrame("Frame", "WizzyWigMinimapMenu", UIParent, "UIDropDownMenuTemplate")
-    EasyMenu(menu, menuFrame, "cursor", 0, 0, "MENU")
+    -- Right-click opens the config menu
+    Settings.OpenToCategory("WizzyWig")
 end
 
 -- Slash command handler
@@ -286,8 +260,7 @@ function WizzyWig:SlashCommand(input)
     elseif input == "show" then
         self:ShowMainFrame()
     elseif input == "config" then
-        InterfaceOptionsFrame_OpenToCategory("WizzyWig")
-        InterfaceOptionsFrame_OpenToCategory("WizzyWig") -- Called twice due to Blizzard bug
+        Settings.OpenToCategory("WizzyWig")
     elseif input == "toggle" then
         self.db.profile.enabled = not self.db.profile.enabled
         self:Print("Addon " .. (self.db.profile.enabled and "enabled" or "disabled"))

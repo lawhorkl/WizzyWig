@@ -9,7 +9,8 @@
         "SendChatMessage",
         "StaticPopup_Show",
         "StaticPopupDialogs",
-        "ReloadUI"
+        "ReloadUI",
+        "Settings"
     ],
     "Lua.runtime.version": "Lua 5.1",
     "Lua.workspace.checkThirdParty": false,
