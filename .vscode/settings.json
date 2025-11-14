@@ -6,7 +6,10 @@
         "EasyMenu",
         "InterfaceOptionsFrame_OpenToCategory",
         "UIParent",
-        "SendChatMessage"
+        "SendChatMessage",
+        "StaticPopup_Show",
+        "StaticPopupDialogs",
+        "ReloadUI"
     ],
     "Lua.runtime.version": "Lua 5.1",
     "Lua.workspace.checkThirdParty": false,

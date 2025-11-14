@@ -25,3 +25,4 @@ Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
 # Core files
 Core.lua
 MainFrame.lua
+WelcomePopup.lua

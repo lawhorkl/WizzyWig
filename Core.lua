@@ -11,6 +11,7 @@ local defaults = {
     profile = {
         enabled = true,
         debugMode = false,
+        firstRun = true,
         framePosition = {
             point = "CENTER",
             x = 0,
@@ -26,6 +27,22 @@ local defaults = {
             hide = false,
         },
     },
+}
+
+-- Confirmation dialog for resetting settings
+StaticPopupDialogs["WIZZYWING_RESET_CONFIRM"] = {
+    text = "Are you sure you want to reset all WizzyWig settings to default values?\n\nThis will reset:\n• All addon settings\n• Frame position\n• Channel preferences\n• Welcome popup will show again",
+    button1 = "Reset",
+    button2 = "Cancel",
+    OnAccept = function()
+        WizzyWig.db:ResetProfile()
+        WizzyWig:Print("All settings have been reset to defaults!")
+        ReloadUI()
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
 }
 
 -- Initialize function
@@ -52,6 +69,12 @@ end
 -- Enable function (called when player logs in)
 function WizzyWig:OnEnable()
     self:Print("WizzyWig enabled!")
+
+    -- Show welcome popup for first-time users
+    if self.db.profile.firstRun then
+        local welcomePopup = WizzyWig.WelcomePopup:New(self)
+        welcomePopup:Show()
+    end
 
     -- Register game events here if needed
     -- self:RegisterEvent("UNIT_HEALTH")
@@ -161,6 +184,15 @@ function WizzyWig:SetupOptions()
                     self:Print("Debug mode " .. (value and "enabled" or "disabled"))
                 end,
                 order = 9,
+            },
+            resetSettings = {
+                type = "execute",
+                name = "Reset All Settings",
+                desc = "Reset all settings to default values. This will also show the welcome popup again on next login.",
+                func = function()
+                    StaticPopup_Show("WIZZYWING_RESET_CONFIRM")
+                end,
+                order = 10,
             },
         },
     }
