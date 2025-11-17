@@ -84,6 +84,35 @@ function MainFrame:Populate(container)
     -- Store reference for send function
     mainContainer.editBox = editBox
 
+    -- Integrate with Misspelled spell checker if available and EmoteSplitter is loaded
+    -- EmoteSplitter is required because Misspelled's color codes can cause character limit issues
+    -- without it (255 char limit - ~144 chars of markup = only ~111 usable chars)
+    local emoteSplitterLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("EmoteSplitter"))
+        or (IsAddOnLoaded and IsAddOnLoaded("EmoteSplitter"))
+
+    if emoteSplitterLoaded and Misspelled and Misspelled.WireUpEditBox then
+        local rawEditBox = editBox.editBox
+
+        -- Create a compatibility wrapper for Misspelled
+        -- Misspelled expects GetName() to return a unique identifier for word location tracking
+        -- Since we can't set a name on an already-created frame, we'll wrap the frame
+        local compatWrapper = rawEditBox
+
+        -- Store original GetName if it exists
+        local originalGetName = rawEditBox.GetName
+
+        -- Override GetName to return a consistent unique name
+        rawEditBox.GetName = function(self)
+            if originalGetName and originalGetName(self) then
+                return originalGetName(self)
+            end
+            return "WizzyWigEditBox"
+        end
+
+        -- Wire up Misspelled's spell checking to the raw editbox frame
+        Misspelled:WireUpEditBox(rawEditBox)
+    end
+
     -- Setup toolbar above the editbox
     SetupToolbar(self, mainContainer, editBox)
 
@@ -180,7 +209,7 @@ function MainFrame:Show()
     local pos = self.addon.db.profile.framePosition
     self.frame:SetPoint(pos.point, UIParent, pos.point, pos.x, pos.y)
 
-    -- Save position when frame is moved
+    -- Save position when frame is moved/closed
     local addon = self.addon
     local mainFrameObj = self
     self.frame:SetCallback("OnClose", function(widget)
@@ -190,8 +219,9 @@ function MainFrame:Show()
             x = x,
             y = y,
         }
-        AceGUI:Release(widget)
-        mainFrameObj.frame = nil
+        -- Just hide the frame instead of releasing it
+        -- This preserves the editbox content and Misspelled integration
+        widget:Hide()
     end)
 
     -- Add content to frame

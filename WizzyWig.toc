@@ -4,7 +4,7 @@
 ## Author: Kyle Lawhorn
 ## Version: @project-version@
 ## SavedVariables: WizzyWigDB
-## OptionalDeps: Ace3
+## OptionalDeps: Ace3, EmoteSplitter, Misspelled
 ## X-Category: Roleplay
 ## X-Website: https://github.com/lawhorkl/WizzyWig
 ## X-Curse-Project-ID:
