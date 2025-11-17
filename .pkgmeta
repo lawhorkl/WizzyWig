@@ -35,7 +35,6 @@ externals:
 
 # Files and directories to ignore when packaging
 ignore:
-  - README.md
   - LICENSE
   - .git
   - .github
@@ -46,9 +45,11 @@ ignore:
   - release.sh
   - types.lua
   - "*.zip"
+  - "*.gif"
+  - Screenshot.gif
 
 # Enable changelog generation from git commits
 enable-nolib-creation: no
 
-# Optional: Manual changelog file (comment out if using git commit messages)
-# manual-changelog: CHANGELOG.md
+# Manual changelog file
+manual-changelog: CHANGELOG.md

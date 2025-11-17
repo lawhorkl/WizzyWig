@@ -7,8 +7,7 @@
 ## OptionalDeps: Ace3, EmoteSplitter, Misspelled
 ## X-Category: Roleplay
 ## X-Website: https://github.com/lawhorkl/WizzyWig
-## X-Curse-Project-ID:
-## X-WoWI-ID:
+## X-Curse-Project-ID: 1383234
 
 # Libraries
 Libs\LibStub\LibStub.lua
