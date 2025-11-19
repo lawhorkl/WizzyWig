@@ -11,6 +11,8 @@ function MainFrame:New(wizzywigAddon)
     local self = setmetatable({}, MainFrame)
     self.addon = wizzywigAddon  -- Reference to main addon for db access
     self.frame = nil
+    self.colorPicker = nil       -- Color picker instance
+    self.editBox = nil           -- Reference to edit box
     return self
 end
 
@@ -43,6 +45,51 @@ local function SetupToolbar(self, container, editBox)
             editBox:SetFocus()
         end)
         toolbar:AddChild(btn)
+    end
+end
+
+-- Setup color picker toolbar
+local function SetupColorToolbar(self, container, editBox)
+    if not self.addon.colorStyle then
+        return  -- Color system not initialized
+    end
+
+    -- Create color picker instance if needed
+    if not self.colorPicker then
+        self.colorPicker = WizzyWig.ColorPicker:New(self.addon, self.addon.colorStyle)
+    end
+
+    -- Create color toolbar
+    self.colorPicker:CreateToolbar(container, function(colorData)
+        -- Handle color selection
+        self:ApplyColorToSelection(editBox, colorData)
+    end)
+end
+
+-- Apply color to selected text
+-- TODO: WoW's EditBox doesn't provide a way to get selected text range
+-- Possible solutions:
+--   1. Track OnCursorChanged and OnTextChanged events manually
+--   2. Use inline markup like {c:FF0000}text{/c} that gets converted at send time
+--   3. Apply color to entire message (simple MVP)
+--   4. Use a separate color palette window where users drag/drop text
+function MainFrame:ApplyColorToSelection(editBox, colorData)
+    if not colorData then
+        return
+    end
+
+    -- MVP: Apply color to entire message
+    local text = editBox:GetText()
+    if text == "" then
+        self.addon:Print("Type some text first before applying colors")
+        return
+    end
+
+    -- Add style for entire message
+    if self.addon.wysiwyg then
+        self.addon.wysiwyg:AddStyle(1, #text, "color", colorData)
+        self.addon:Print(string.format("Color applied to entire message"))
+        self.addon:DebugPrint(string.format("Added color to range 1-%d", #text))
     end
 end
 
@@ -83,6 +130,7 @@ function MainFrame:Populate(container)
 
     -- Store reference for send function
     mainContainer.editBox = editBox
+    self.editBox = editBox
 
     -- Integrate with Misspelled spell checker if available and EmoteSplitter is loaded
     -- EmoteSplitter is required because Misspelled's color codes can cause character limit issues
@@ -113,10 +161,15 @@ function MainFrame:Populate(container)
         Misspelled:WireUpEditBox(rawEditBox)
     end
 
-    -- Setup toolbar above the editbox
+    -- Setup raid icon toolbar above the editbox
     SetupToolbar(self, mainContainer, editBox)
 
-    -- Add editBox after toolbar
+    -- Setup color picker toolbar (if color system is enabled)
+    if self.addon.db.profile.colors.enabled then
+        SetupColorToolbar(self, mainContainer, editBox)
+    end
+
+    -- Add editBox after toolbars
     mainContainer:AddChild(editBox)
 
     -- Bottom controls container
@@ -263,37 +316,70 @@ function MainFrame:SendMessage(message, channel)
     -- Convert texture markup to chat codes
     message = ConvertIconsForChat(message)
 
-    -- Send to appropriate channel
-    if channel == "SAY" then
-        SendChatMessage(message, "SAY")
-        self.addon:DebugPrint("Sent to Say: " .. message)
-    elseif channel == "EMOTE" then
-        SendChatMessage(message, "EMOTE")
-        self.addon:DebugPrint("Sent to Emote: " .. message)
-    elseif channel == "PARTY" then
-        if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid(LE_PARTY_CATEGORY_HOME) then
-            SendChatMessage(message, "PARTY")
-            self.addon:DebugPrint("Sent to Party: " .. message)
-        else
-            self.addon:Print("You are not in a party!")
-            return
-        end
-    elseif channel == "RAID" then
-        if IsInRaid(LE_PARTY_CATEGORY_HOME) then
-            SendChatMessage(message, "RAID")
-            self.addon:DebugPrint("Sent to Raid: " .. message)
-        else
-            self.addon:Print("You are not in a raid!")
-            return
-        end
-    else
-        self.addon:Print("Unknown channel: " .. tostring(channel))
-        return
+    -- Get styles from WYSIWYG system (if enabled)
+    local styles = nil
+    if self.addon.wysiwyg and self.addon.db.profile.colors.enabled then
+        styles = self.addon.wysiwyg:GetStyles()
     end
 
-    -- Update status
-    if self.frame then
-        self.frame:SetStatusText("Message sent to " .. channel)
+    -- Try to send via chat integration if styles exist
+    local sentWithStyles = false
+    if self.addon.chatIntegration and styles and #styles > 0 then
+        local success = self.addon.chatIntegration:SendStyledMessage(message, channel, styles)
+        if success then
+            -- Clear styles after sending
+            self.addon.wysiwyg:ClearStyles()
+            sentWithStyles = true
+
+            -- Update status
+            if self.frame then
+                self.frame:SetStatusText("Styled message sent to " .. channel)
+            end
+        else
+            -- Styled send failed, fall back to plain message
+            -- Clear styles since we're not sending them
+            if self.addon.wysiwyg then
+                self.addon.wysiwyg:ClearStyles()
+            end
+        end
+    end
+
+    -- Fallback to plain SendChatMessage if:
+    -- 1. No styles applied, or
+    -- 2. Color system disabled, or
+    -- 3. Styled send failed
+    if not sentWithStyles then
+        if channel == "SAY" then
+            SendChatMessage(message, "SAY")
+            self.addon:DebugPrint("Sent to Say: " .. message)
+        elseif channel == "EMOTE" then
+            SendChatMessage(message, "EMOTE")
+            self.addon:DebugPrint("Sent to Emote: " .. message)
+        elseif channel == "PARTY" then
+            if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid(LE_PARTY_CATEGORY_HOME) then
+                SendChatMessage(message, "PARTY")
+                self.addon:DebugPrint("Sent to Party: " .. message)
+            else
+                self.addon:Print("You are not in a party!")
+                return
+            end
+        elseif channel == "RAID" then
+            if IsInRaid(LE_PARTY_CATEGORY_HOME) then
+                SendChatMessage(message, "RAID")
+                self.addon:DebugPrint("Sent to Raid: " .. message)
+            else
+                self.addon:Print("You are not in a raid!")
+                return
+            end
+        else
+            self.addon:Print("Unknown channel: " .. tostring(channel))
+            return
+        end
+
+        -- Update status
+        if self.frame then
+            self.frame:SetStatusText("Message sent to " .. channel)
+        end
     end
 end
 

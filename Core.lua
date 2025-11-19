@@ -26,6 +26,10 @@ local defaults = {
         minimap = {
             hide = false,
         },
+        colors = {
+            enabled = true,                    -- Master toggle for color system
+            showInDefaultChat = true,          -- Show colors in default chat frames
+        },
     },
 }
 
@@ -77,14 +81,22 @@ function WizzyWig:OnEnable()
         self:Print("|cFFFF0000WARNING: EmoteSplitter addon not found! WizzyWig is limited to the in-game chat message limit without it.|r")
     end
 
+    -- Initialize WYSIWYG style system
+    if self.db.profile.colors.enabled then
+        self:InitializeColorSystem()
+    end
+
+    -- Register events
+    self:RegisterEvent("CHAT_MSG_ADDON")
+    self:RegisterEvent("CHAT_MSG_PARTY")
+    self:RegisterEvent("CHAT_MSG_RAID")
+    self:RegisterEvent("CHAT_MSG_GUILD")
+
     -- Show welcome popup for first-time users
     if self.db.profile.firstRun then
         local welcomePopup = WizzyWig.WelcomePopup:New(self)
         welcomePopup:Show()
     end
-
-    -- Register game events here if needed
-    -- self:RegisterEvent("UNIT_HEALTH")
 end
 
 -- Disable function (called when player logs out)
@@ -92,6 +104,52 @@ function WizzyWig:OnDisable()
     -- Cleanup code here
     if self.mainFrame then
         self.mainFrame:Hide()
+    end
+
+    -- Cleanup color system
+    if self.chatIntegration then
+        self.chatIntegration:UnhookChatFrames()
+    end
+end
+
+-- Initialize color/style system
+function WizzyWig:InitializeColorSystem()
+    -- Create WYSIWYG instance
+    self.wysiwyg = WizzyWig.WYSIWYG:New(self)
+
+    -- Create and register ColorStyle provider
+    self.colorStyle = WizzyWig.ColorStyle:New(self)
+    self.wysiwyg:RegisterProvider(self.colorStyle)
+
+    -- Create chat integration
+    self.chatIntegration = WizzyWig.ChatIntegration:New(self, self.wysiwyg)
+    self.chatIntegration:Initialize()
+
+    self:DebugPrint("Color system initialized")
+end
+
+-- Event handler
+function WizzyWig:CHAT_MSG_ADDON(event, prefix, data, channel, sender, ...)
+    if self.chatIntegration then
+        self.chatIntegration:HandleAddonMessage(prefix, data, channel, sender)
+    end
+end
+
+function WizzyWig:CHAT_MSG_PARTY(event, text, sender, ...)
+    if self.chatIntegration then
+        self.chatIntegration:OnChatMessage(event, text, sender, ...)
+    end
+end
+
+function WizzyWig:CHAT_MSG_RAID(event, text, sender, ...)
+    if self.chatIntegration then
+        self.chatIntegration:OnChatMessage(event, text, sender, ...)
+    end
+end
+
+function WizzyWig:CHAT_MSG_GUILD(event, text, sender, ...)
+    if self.chatIntegration then
+        self.chatIntegration:OnChatMessage(event, text, sender, ...)
     end
 end
 
@@ -154,8 +212,39 @@ function WizzyWig:SetupOptions()
             },
             header2 = {
                 type = "header",
-                name = "Minimap Button",
+                name = "Color System",
                 order = 6,
+            },
+            colorsEnabled = {
+                type = "toggle",
+                name = "Enable Colors",
+                desc = "Enable the color/styling system for messages",
+                get = function() return self.db.profile.colors.enabled end,
+                set = function(info, value)
+                    self.db.profile.colors.enabled = value
+                    self:Print("Color system " .. (value and "enabled" or "disabled"))
+                    if value then
+                        self:InitializeColorSystem()
+                    end
+                end,
+                order = 7,
+            },
+            colorsShowInDefaultChat = {
+                type = "toggle",
+                name = "Show Colors in Default Chat",
+                desc = "Display colored messages in default chat frames",
+                get = function() return self.db.profile.colors.showInDefaultChat end,
+                set = function(info, value)
+                    self.db.profile.colors.showInDefaultChat = value
+                    self:Print("Colors in default chat " .. (value and "enabled" or "disabled"))
+                end,
+                order = 8,
+                disabled = function() return not self.db.profile.colors.enabled end,
+            },
+            header3 = {
+                type = "header",
+                name = "Minimap Button",
+                order = 9,
             },
             minimapHide = {
                 type = "toggle",
@@ -174,12 +263,12 @@ function WizzyWig:SetupOptions()
                     end
                     self:Print("Minimap button " .. (value and "hidden" or "shown"))
                 end,
-                order = 7,
+                order = 10,
             },
-            header3 = {
+            header4 = {
                 type = "header",
                 name = "Advanced",
-                order = 8,
+                order = 11,
             },
             debugMode = {
                 type = "toggle",
@@ -190,7 +279,7 @@ function WizzyWig:SetupOptions()
                     self.db.profile.debugMode = value
                     self:Print("Debug mode " .. (value and "enabled" or "disabled"))
                 end,
-                order = 9,
+                order = 12,
             },
             resetSettings = {
                 type = "execute",
@@ -199,7 +288,7 @@ function WizzyWig:SetupOptions()
                 func = function()
                     StaticPopup_Show("WIZZYWING_RESET_CONFIRM")
                 end,
-                order = 10,
+                order = 13,
             },
         },
     }

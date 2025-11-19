@@ -23,5 +23,13 @@ Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
 
 # Core files
 Core.lua
+
+# WYSIWYG Style System
+WYSIWYG.lua
+ColorStyle.lua
+ColorPicker.lua
+ChatIntegration.lua
+
+# UI
 MainFrame.lua
 WelcomePopup.lua
