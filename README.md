@@ -109,6 +109,16 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 This addon is released under the MIT License. Feel free to modify and redistribute!
 
+## 🛠️ Development
+
+Claude AI **is used** in development but this addon is **primarily written by a human developer**. Claude AI assists with:
+- API reference lookups and WoW UI documentation
+- Bug investigation and debugging
+- Code review and architectural discussions (rubber duck debugging)
+- Documentation clarification
+
+The core logic, design decisions, and implementation are human-authored.
+
 ## 💖 Credits
 
 Created by **Kyle Lawhorn**
