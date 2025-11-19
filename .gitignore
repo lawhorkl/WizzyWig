@@ -19,3 +19,6 @@ Thumbs.db
 
 # WoW saved variables (for testing)
 WizzyWigDB.lua
+
+wow_reference/
+kb/

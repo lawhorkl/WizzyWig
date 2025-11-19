@@ -1,0 +1,462 @@
+KB_BUILD_RECIPE:WOW_API_KB
+===========================
+ADAPTABLE:works_with_any_WoW_version
+SOURCE:wow_reference/wow-ui-source/
+BUDGET:~200K_tokens/session,expect_5-7_sessions
+
+DELIVERABLES:
+WOW_API_KB.txt:combined_master_file(expect_100K-200K_tokens)
+kb/chat_system.txt:chat_APIs
+kb/addon_communication.txt:addon_comm_APIs
+kb/frames_widgets.txt:UI_widget_APIs
+kb/events.txt:game_events
+kb/hyperlinks.txt:hyperlink_syntax
+kb/colors_fonts_constants.txt:colors+fonts+constants
+kb/global_functions.txt:global_funcs+patterns
+
+CRITICAL:GENERAL_PURPOSE_KB(document_ALL_APIs_found,not_just_project_needs)
+
+================================================================================
+STEP:1:INIT
+================================================================================
+ACTION:
+mkdir_kb
+touch_WOW_API_KB.txt
+init_KB_BUILD_PROGRESS.txt_with_header
+VERIFY:wow_reference/wow-ui-source/_exists
+GET_VERSION:grep_"TOC_VERSION"_or_check_FrameXML/Constants.lua
+
+================================================================================
+STEP:2:PHASE1_CHAT_SYSTEM
+================================================================================
+GOAL:Document_complete_chat_system_API
+
+SEARCH_STRATEGY:
+PRIMARY:wow-ui-source/Interface/AddOns/Blizzard_ChatFrameBase/
+SECONDARY:grep_"ChatFrame","ScrollingMessageFrame","CHAT_MSG","ChatTypeInfo"
+FALLBACK:wow-ui-source/Interface/AddOns/Blizzard_SharedXML/
+
+FIND_AND_DOCUMENT:
+CONSTANTS:
+  pattern:NUM_CHAT*,MAX_CHAT*,DEFAULT_CHAT*,MAX_CHARACTER_NAME*
+  how:search_for_uppercase_with_numbers,document_value+type
+
+CHATTYPE_INFO:
+  where:search_"ChatTypeInfo\["
+  what:all_chat_type_entries(SAY,PARTY,RAID,etc)
+  fields:sticky,flashTab,flashTabOnGeneral,ignoreChatTypeProcessing,r,g,b,id
+  capture:complete_table_structure
+
+CHATTYPE_GROUP:
+  where:search_"ChatTypeGroup\["
+  what:mappings_of_chat_groups→event_lists
+  capture:all_mappings
+
+CORE_FUNCTIONS:
+  pattern:ChatFrame_*
+  priority:ChatFrame_MessageEventHandler,ChatFrame_OnEvent,ChatFrame_AddMessage,ChatFrame_*MessageEventFilter,ChatFrame_RegisterForMessages,ChatFrame_AddMessageGroup
+  capture:params+return_types+location+description
+  special:ChatFrame_MessageEventHandler→document_all_17_args
+
+SENDCHATMESSAGE:
+  where:search_"SendChatMessage"_in_C_API_docs_or_usage
+  what:params+all_chatType_values+limits
+  capture:complete_function_signature
+
+COLOR_SYNTAX:
+  where:search_"|c","WrapTextInColorCode","CreateColor","ColorMixin"
+  what:escape_sequence_syntax,color_helper_functions
+  capture:syntax_format+all_ColorMixin_methods
+
+SCROLLINGMESSAGEFRAME:
+  where:Blizzard_SharedXML/ScrollingMessageFrame.lua_or_*MessageFrame*Documentation.lua
+  what:ALL_methods_in_ScrollingMessageFrameMixin
+  capture:complete_API(AddMessage,BackFillMessage,GetNumMessages,GetMessageInfo,scroll_methods,etc)
+  ensure:all_methods_have_params+return_types
+
+CHATFRAME_ADDITIONAL:
+  pattern:ChatFrame_*
+  find:channel_functions,private_message_functions,community_functions,utility_functions
+  capture:ALL_discovered_with_params+returns
+
+FORMAT:
+===WOW_API_KB===
+BUILD_DATE:YYYY-MM-DD
+WOW_VERSION:[detected_version]
+SOURCE:wow-ui-source/Interface/...
+PURPOSE:Token-efficient_WoW_UI_API_reference
+
+===PHASE_1:CHAT_SYSTEM===
+[all_documented_content]
+
+APPEND_TO:WOW_API_KB.txt
+LOG_TO:KB_BUILD_PROGRESS.txt("YYYY-MM-DD - PHASE_1:CHAT_SYSTEM - COMPLETE\n- Documented X constants, Y functions, Z methods\n- Tokens: ~XXK/200K")
+
+================================================================================
+STEP:3:PHASE2_ADDON_COMMUNICATION
+================================================================================
+GOAL:Document_addon-to-addon_communication_system
+
+SEARCH_STRATEGY:
+PRIMARY:grep_"C_ChatInfo","RegisterAddonMessagePrefix","SendAddonMessage","CHAT_MSG_ADDON"
+SECONDARY:Blizzard_APIDocumentationGenerated/*ChatInfo*
+TERTIARY:search_addon_communication_in_ChatFrame.lua
+
+FIND_AND_DOCUMENT:
+CONSTANTS:
+  pattern:ADDON_MESSAGE_*
+  find:prefix_max_length,message_max_length
+
+C_CHATINFO_API:
+  find:C_ChatInfo.RegisterAddonMessagePrefix
+  capture:params+return_type
+  discover:return_enum_values(Success,DuplicatePrefix,InvalidPrefix,MaxPrefixes,etc)
+
+  find:C_ChatInfo.SendAddonMessage
+  capture:params(prefix,message,chatType,target)+return_type
+  discover:return_enum_values(Success,InvalidPrefix,AddonMessageThrottle,etc)
+  discover:all_supported_chatType_values
+
+  find:C_ChatInfo.SendAddonMessageLogged
+  capture:params+return_type
+
+EVENTS:
+  find:CHAT_MSG_ADDON,BN_CHAT_MSG_ADDON,CHAT_MSG_ADDON_LOGGED
+  capture:complete_payload_structure(all_args)
+  document:arg_names+types+descriptions
+
+USAGE_PATTERNS:
+  extract:code_examples_from_comments_or_usage
+  create:basic_usage,binary_data,multi-part_messages,serialization_patterns
+
+BEHAVIOR:
+  search:comments+usage_for_rate_limiting,cross-realm_behavior,security_considerations
+  document:throttle_rules,what_works_cross-realm,validation_patterns
+
+APPEND_TO:WOW_API_KB.txt(===PHASE_2:ADDON_COMMUNICATION===)
+LOG_TO:KB_BUILD_PROGRESS.txt
+
+================================================================================
+STEP:4:PHASE3_FRAMES_WIDGETS
+================================================================================
+GOAL:Document_complete_UI_widget_system
+
+SEARCH_STRATEGY:
+PRIMARY:Blizzard_APIDocumentationGenerated/Simple*APIDocumentation.lua
+SECONDARY:grep_"SimpleFontString","SimpleEditBox","SimpleButton","SimpleFrame","Region"
+FILES:SimpleFontStringAPI,SimpleEditBoxAPI,SimpleButtonAPI,SimpleFrameAPI,RegionAPI,TextureAPI
+
+FIND_AND_DOCUMENT:
+WIDGET_HIERARCHY:
+  discover:UIObject→Region→Frame_inheritance_tree
+  map:Frame→Button,EditBox,ScrollFrame,etc
+  map:Region→FontString,Texture,Line
+  capture:complete_hierarchy
+
+FOR_EACH_WIDGET_TYPE:
+  FONTSTRING:
+    where:SimpleFontStringAPIDocumentation.lua
+    what:ALL_functions_in_Functions_table
+    capture:Name,Arguments(name+type+nilable+default),Returns(name+type+nilable)
+    document:complete_method_list_with_signatures
+
+  EDITBOX:
+    where:SimpleEditBoxAPIDocumentation.lua
+    what:ALL_functions_in_Functions_table
+    capture:Name,Arguments,Returns
+    categories:text_methods,focus_methods,cursor_methods,validation_methods,history_methods,IME_methods,security_methods
+
+  BUTTON:
+    where:SimpleButtonAPIDocumentation.lua
+    what:ALL_functions_in_Functions_table
+    capture:Name,Arguments,Returns
+    categories:state_methods,texture_methods,font_methods,click_methods
+
+  FRAME:
+    where:SimpleFrameAPIDocumentation.lua
+    what:ALL_functions_in_Functions_table
+    capture:Name,Arguments,Returns
+    categories:child_methods,event_methods,script_methods,strata_methods
+
+  REGION:
+    where:RegionAPIDocumentation.lua_or_similar
+    what:ALL_functions_in_Functions_table
+    capture:Name,Arguments,Returns
+    categories:position_methods,size_methods,visibility_methods,coordinate_methods
+
+SCRIPT_HANDLERS:
+  search:OnLoad,OnShow,OnHide,OnUpdate,OnEvent,OnEnter,OnLeave,etc
+  discover:ALL_script_handler_names
+  document:handler_signature(self,event,..._or_self,elapsed_or_etc)
+  categorize:frame_handlers,editbox_handlers,button_handlers
+
+APPEND_TO:WOW_API_KB.txt(===PHASE_3:FRAMES_AND_WIDGETS===)
+LOG_TO:KB_BUILD_PROGRESS.txt
+
+================================================================================
+STEP:5:PHASE4_EVENTS_HYPERLINKS_COLORS_CONSTANTS
+================================================================================
+GOAL:Document_events,hyperlinks,colors,fonts,constants,global_functions
+
+EVENTS:
+  search:"PLAYER_","ADDON_LOADED","GROUP_","COMBAT_","ITEM_","QUEST_","UNIT_"
+  discover:all_event_names_in_source
+  for_each:capture_payload_args
+  categorize:player_events,ui_events,group_events,combat_events,item_events,quest_events
+  pattern:event_registration_example
+
+HYPERLINKS:
+  search:"|H","SetHyperlink","ItemRef"
+  discover:all_hyperlink_types(item,spell,achievement,quest,etc)
+  for_each_type:document_format+example
+  patterns:creating_hyperlinks,parsing_hyperlinks
+
+COLORS:
+  search:"FONT_COLOR","CreateColor","ColorMixin"
+  discover:all_color_constants(RED_FONT_COLOR,GREEN_FONT_COLOR,etc)
+  find:font_objects(ChatFontNormal,GameFontNormal,etc)
+  find:font_flags(OUTLINE,THICKOUTLINE,MONOCHROME)
+  pattern:using_colors_example
+
+CLASS_COLORS:
+  search:"RAID_CLASS_COLORS","GetClassColor"
+  discover:all_class_entries_with_hex_codes
+  capture:complete_13-class_list(or_however_many_exist_in_version)
+  functions:GetClassColor,GetClassColorObj
+
+GAME_CONSTANTS:
+  search:MAX_,NUM_,BACKPACK_,BANK_,COMBATLOG_,LE_PARTY_,ItemQuality,Enum_
+  discover:all_constant_definitions
+  categorize:bags,combat_log,party_types,item_quality,level_caps
+  capture:name+value+type
+
+GLOBAL_FUNCTIONS:
+  search:^function_[A-Z]|^[A-Z][a-zA-Z]+\s*=\s*function
+  priority:GetTime,time,date,GetServerTime,UnitName,UnitClass,UnitRace,UnitLevel,UnitHealth,UnitPower,UnitGUID,UnitExists,UnitIsPlayer,GetItemInfo,GetItemCount,GetSpellInfo,IsSpellKnown
+  discover:Unit*,Get*,Is*_functions
+  capture:params+returns_for_each
+
+PATTERNS:
+  mixin:search_"Mixin","CreateFromMixins"
+  createframe:search_"CreateFrame"
+  discover:all_frame_types_available
+  patterns:usage_examples
+
+APPEND_TO:WOW_API_KB.txt(===PHASE_4-7:CONSOLIDATED===)
+LOG_TO:KB_BUILD_PROGRESS.txt
+
+================================================================================
+STEP:6:FINALIZE_MASTER
+================================================================================
+ACTION:
+APPEND_TO:WOW_API_KB.txt(===FINAL_SUMMARY===)
+INCLUDE:
+  KNOWLEDGE_BASE:WoW_UI_API_Reference
+  VERSION:[detected]
+  BUILD_DATE:[current]
+  TOTAL_CONTENT:[actual_token_estimate]
+  COVERAGE:[phase_summaries]
+  FORMAT:structured_key-value
+  SEARCHABLE:===SECTION===_markers
+  BUILD_STATUS:COMPLETE
+
+LOG_TO:KB_BUILD_PROGRESS.txt("BUILD COMPLETE")
+
+================================================================================
+STEP:7:SPLIT_INTO_TOPICS
+================================================================================
+STRATEGY:read_WOW_API_KB.txt→extract_by_phase→write_7_topic_files
+
+FOR_EACH_TOPIC:
+  HEADER:
+    ===WOW_API_KB:[TOPIC]===
+    BUILD_DATE:[date]
+    WOW_VERSION:[version]
+    SOURCE:[sources]
+    PURPOSE:Token-efficient_[topic]_reference
+
+  CONTENT:extract_relevant_sections_from_master
+
+  FOOTER:===END_[TOPIC]===
+
+FILES:
+kb/chat_system.txt←Phase_1_content
+kb/addon_communication.txt←Phase_2_content
+kb/frames_widgets.txt←Phase_3_content
+kb/events.txt←Phase_4-7_events_section
+kb/hyperlinks.txt←Phase_4-7_hyperlinks_section
+kb/colors_fonts_constants.txt←Phase_4-7_colors+fonts+constants_sections
+kb/global_functions.txt←Phase_4-7_global_funcs+patterns_sections
+
+LOG_TO:KB_BUILD_PROGRESS.txt("TOPIC SPLIT COMPLETE - 7 files created")
+
+================================================================================
+STEP:8:UPDATE_CONFIG
+================================================================================
+ACTION:
+READ:.claude/settings.local.json
+MERGE:
+{
+  "env": {
+    "WOW_API_KB": "WOW_API_KB.txt contains comprehensive WoW UI API reference. Topic files in kb/ directory: chat_system.txt, addon_communication.txt, frames_widgets.txt, events.txt, hyperlinks.txt, colors_fonts_constants.txt, global_functions.txt. Use Grep to search these files for WoW API questions."
+  }
+}
+WRITE:.claude/settings.local.json
+
+================================================================================
+FORMAT_SPECIFICATION
+================================================================================
+CONSTANTS:
+CONST:NAME
+TYPE:type
+VALUE:value
+DESC:description
+
+FUNCTIONS:
+FN:function_name
+LOC:file.lua:linenum(if_known)
+TYPE:C_API|function|method
+PARAMS:param1=type(description),param2=type(description)
+RET:returnValue=type|void
+DESC:short_description
+PATTERN:(optional,only_if_critical)
+  code_example
+  max_3-5_lines
+
+TYPES:
+TYPE:TypeName
+DESC:description
+INHERITS:ParentType(if_applicable)
+FIELDS:
+  field1:type(description)
+  field2:type(description)
+METHODS:(for_mixins/classes)
+  Method1(params):return_type
+  Method2(params):return_type
+
+EVENTS:
+EVENT:EVENT_NAME
+FIRES:when_it_fires
+PAYLOAD:
+  arg1:type(description)
+  arg2:type(description)
+PATTERN:(optional)
+  usage_example
+
+ENUMS:
+ENUM:EnumName
+VALUES:
+  Value1:0(description)
+  Value2:1(description)
+
+PATTERNS:
+PATTERN:Pattern_Name
+DESC:description(optional)
+CODE:
+  code_line_1
+  code_line_2
+
+TOKEN_EFFICIENCY:
+use_underscores_instead_of_spaces_in_values
+abbreviate:FN/PARAMS/RET/DESC/LOC/CONST/TYPE
+no_prose_just_facts
+compact_but_complete
+
+STRUCTURE:
+section_headers:===SECTION_NAME===
+key_value_pairs:KEY:value
+no_spaces_in_values(use_underscores)
+indent_2_spaces_for_nested_content
+arrays:comma_separated
+
+================================================================================
+VERIFICATION_CHECKLIST
+================================================================================
+WHEN_BUILD_COMPLETE:
+☑ WOW_API_KB.txt:exists_with_all_phases
+☑ kb/:7_topic_files_exist
+☑ KB_BUILD_PROGRESS.txt:all_phases_logged
+☑ .claude/settings.local.json:WOW_API_KB_env_set
+☑ can_grep_for_major_APIs_and_find_them
+☑ all_functions_have_complete_signatures
+☑ all_functions_have_return_types
+☑ all_enums_have_complete_value_lists
+☑ format_is_consistent_throughout
+☑ version_is_documented
+
+CRITICAL_API_CHECKLIST(must_be_documented):
+ChatFrame_MessageEventHandler(with_17_args)
+ChatFrame_AddMessage
+C_ChatInfo.RegisterAddonMessagePrefix(with_enum)
+C_ChatInfo.SendAddonMessage(with_enum)
+CHAT_MSG_ADDON(with_payload)
+ScrollingMessageFrame:AddMessage
+SimpleFontString:SetText,GetText
+SimpleEditBox:SetText,GetText,SetFocus
+SimpleButton:Click,SetEnabled
+SimpleFrame:SetScript,RegisterEvent
+Region:SetPoint,SetSize,Show
+color_syntax:|c|r
+hyperlink_syntax:|H|h
+CreateFrame
+Mixin,CreateFromMixins
+
+================================================================================
+ADAPTATION_NOTES
+================================================================================
+VERSION_CHANGES:
+if_APIs_moved:search_broader,grep_function_names
+if_APIs_renamed:document_new_names,note_changes_in_progress_log
+if_APIs_added:include_them,document_completely
+if_APIs_removed:skip_them,note_in_progress_log
+if_new_widget_types:document_them_in_Phase_3
+if_new_event_categories:document_them_in_Phase_4-7
+
+FILE_STRUCTURE_CHANGES:
+if_files_reorganized:search_by_grep_not_hardcoded_paths
+if_documentation_format_changed:adapt_parsing_logic
+if_new_API_namespaces:search_for_C_*,Enum_*,etc
+
+COMPLETENESS_OVER_EXACTNESS:
+goal:document_ALL_APIs_found
+not_goal:match_exact_line_counts_or_token_counts
+strategy:exploratory_search+comprehensive_documentation
+measure_success:completeness_of_coverage,not_exact_metrics
+
+================================================================================
+RECOVERY_AND_RESUMPTION
+================================================================================
+IF_INTERRUPTED:
+read_KB_BUILD_PROGRESS.txt→identify_last_completed_phase
+read_last_200_lines_of_WOW_API_KB.txt→see_what's_there
+continue_from_next_incomplete_phase
+avoid_duplicating_content
+
+IF_REBUILD_FROM_SCRATCH:
+delete_WOW_API_KB.txt_and_kb/*.txt
+keep_KB_BUILD_PROGRESS.txt_for_reference
+start_from_STEP:1
+
+IF_VERSION_UPGRADE:
+keep_previous_KB_as_reference
+create_new_KB_with_new_version_number
+note_API_changes_in_progress_log
+document_new_APIs,note_deprecated_APIs
+
+================================================================================
+USAGE_AFTER_COMPLETION
+================================================================================
+TARGETED_SEARCH:
+Grep_pattern:"FN:SetText"_path:kb/frames_widgets.txt_output_mode:content
+Grep_pattern:"CHAT_MSG_ADDON"_path:kb/addon_communication.txt_output_mode:content
+Grep_pattern:"PLAYER_LOGIN"_path:kb/events.txt_output_mode:content
+
+COMPREHENSIVE_REFERENCE:
+Read_entire_WOW_API_KB.txt(fits_in_200K_context)
+
+QUICK_LOOKUP:
+Read_specific_topic_file(smaller_token_footprint)
+
+================================================================================
+END_KB_BUILD_RECIPE
+================================================================================
