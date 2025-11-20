@@ -20,5 +20,9 @@ Thumbs.db
 # WoW saved variables (for testing)
 WizzyWigDB.lua
 
-wow_reference/
+# Development reference files
 kb/
+wow_reference/
+KB_*.txt
+WOW_API_KB.txt
+IMPLEMENTATION_PLAN_*.md

@@ -41,12 +41,20 @@ ignore:
   - .gitignore
   - .pkgmeta
   - .vscode
+  - .claude
   - .release
   - release.sh
   - types.lua
   - "*.zip"
   - "*.gif"
   - Screenshot.gif
+  # Knowledge base and reference files
+  - kb
+  - wow_reference
+  - KB_*.txt
+  - WOW_API_KB.txt
+  # Implementation/planning documents
+  - IMPLEMENTATION_PLAN_*.md
 
 # Enable changelog generation from git commits
 enable-nolib-creation: no
