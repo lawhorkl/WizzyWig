@@ -43,9 +43,10 @@
 - Option to auto-clear after sending (disabled by default)
 
 ### 🎨 **Multiple Channels**
-- Say, Emote, Party, Raid, and more
+- Say, Emote, Party, Raid, and Raid Warning
 - Quick channel switching dropdown
 - Remembers your last-used channel
+- Raid Warning requires raid leader or assistant role
 
 ## 📦 Installation
 
