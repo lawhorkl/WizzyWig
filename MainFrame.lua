@@ -134,6 +134,7 @@ function MainFrame:Populate(container)
         ["EMOTE"] = "Emote",
         ["PARTY"] = "Party",
         ["RAID"] = "Raid",
+        ["RAID_WARNING"] = "Raid Warning",
     })
     channelDropdown:SetValue(self.addon.db.profile.defaultChannel)
     channelDropdown:SetCallback("OnValueChanged", function(widget, event, key)
@@ -284,6 +285,14 @@ function MainFrame:SendMessage(message, channel)
             self.addon:DebugPrint("Sent to Raid: " .. message)
         else
             self.addon:Print("You are not in a raid!")
+            return
+        end
+    elseif channel == "RAID_WARNING" then
+        if IsInRaid(LE_PARTY_CATEGORY_HOME) and (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) then
+            SendChatMessage(message, "RAID_WARNING")
+            self.addon:DebugPrint("Sent to Raid Warning: " .. message)
+        else
+            self.addon:Print("You must be raid leader or assistant to use Raid Warning!")
             return
         end
     else

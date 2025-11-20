@@ -47,6 +47,8 @@ ignore:
   - "*.zip"
   - "*.gif"
   - Screenshot.gif
+  - CLAUDE.md
+  - KB_BUILD_RECIPE.txt
 
 # Enable changelog generation from git commits
 enable-nolib-creation: no

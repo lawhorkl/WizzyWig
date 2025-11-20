@@ -133,6 +133,7 @@ function WizzyWig:SetupOptions()
                     ["EMOTE"] = "Emote",
                     ["PARTY"] = "Party",
                     ["RAID"] = "Raid",
+                    ["RAID_WARNING"] = "Raid Warning",
                 },
                 get = function() return self.db.profile.defaultChannel end,
                 set = function(info, value)
