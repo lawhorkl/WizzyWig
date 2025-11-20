@@ -149,6 +149,21 @@ end
 -- ENCODING / PACKING
 -- ========================================
 
+-- Escape null bytes in binary data for transmission
+-- Replaces 0x00 with 0x01 0x01, and 0x01 with 0x01 0x02
+local function EscapeBinary(data)
+    local escaped = data:gsub("\001", "\001\002")  -- Escape 0x01 first
+    escaped = escaped:gsub("\000", "\001\001")      -- Then escape 0x00
+    return escaped
+end
+
+-- Unescape binary data after transmission
+local function UnescapeBinary(data)
+    local unescaped = data:gsub("\001\001", "\000")  -- Unescape 0x00 first
+    unescaped = unescaped:gsub("\001\002", "\001")   -- Then unescape 0x01
+    return unescaped
+end
+
 -- Pack all styles for a message
 -- Format: numStyles(uint8) + [styleType(uint8) + startPos(uint16) + endPos(uint16) + encodedStyle]...
 function WYSIWYG:PackStyles(styles)
@@ -161,6 +176,13 @@ function WYSIWYG:PackStyles(styles)
 
     for i = 1, numStyles do
         local style = styles[i]
+
+        -- Debug: print style info
+        if WizzyWig and WizzyWig.DebugPrint then
+            WizzyWig:DebugPrint(string.format("Packing style %d: type=%s, start=%d, end=%d",
+                i, tostring(style.styleType), style.startPos or 0, style.endPos or 0))
+        end
+
         local provider = self.providers[style.styleType]
 
         if provider then
@@ -177,10 +199,24 @@ function WYSIWYG:PackStyles(styles)
             -- Encode style-specific data
             local encodedStyle = provider:EncodeStyle(style.styleData)
             data = data .. encodedStyle
+        else
+            if WizzyWig and WizzyWig.DebugPrint then
+                WizzyWig:DebugPrint("No provider found for style type: " .. tostring(style.styleType))
+            end
         end
     end
 
-    return data
+    if WizzyWig and WizzyWig.DebugPrint then
+        WizzyWig:DebugPrint("PackStyles result: " .. #data .. " bytes for " .. numStyles .. " style(s)")
+    end
+
+    -- Escape null bytes for transmission
+    local escaped = EscapeBinary(data)
+    if WizzyWig and WizzyWig.DebugPrint then
+        WizzyWig:DebugPrint("After escaping: " .. #escaped .. " bytes")
+    end
+
+    return escaped
 end
 
 -- Pack full message (text + styles) for fake SAY/EMOTE
@@ -210,12 +246,19 @@ end
 function WYSIWYG:UnpackStyles(data, offset)
     offset = offset or 1
 
-    if offset > #data then
+    if not data or #data == 0 or offset > #data then
         return {}, offset
     end
 
+    -- Unescape null bytes after transmission
+    data = UnescapeBinary(data)
+
     local numStyles = string.byte(data, offset)
     offset = offset + 1
+
+    if not numStyles then
+        return {}, offset
+    end
 
     local styles = {}
 
@@ -224,6 +267,12 @@ function WYSIWYG:UnpackStyles(data, offset)
 
         -- Read: typeId + startPos + endPos
         local typeId, s1, s2, e1, e2 = string.byte(data, offset, offset + 4)
+
+        -- Check if we got all 5 bytes
+        if not typeId or not s1 or not s2 or not e1 or not e2 then
+            break
+        end
+
         offset = offset + 5
 
         local startPos = s1 * 256 + s2

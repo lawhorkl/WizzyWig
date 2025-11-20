@@ -88,6 +88,8 @@ function WizzyWig:OnEnable()
 
     -- Register events
     self:RegisterEvent("CHAT_MSG_ADDON")
+    self:RegisterEvent("CHAT_MSG_SAY")
+    self:RegisterEvent("CHAT_MSG_EMOTE")
     self:RegisterEvent("CHAT_MSG_PARTY")
     self:RegisterEvent("CHAT_MSG_RAID")
     self:RegisterEvent("CHAT_MSG_GUILD")
@@ -132,6 +134,18 @@ end
 function WizzyWig:CHAT_MSG_ADDON(event, prefix, data, channel, sender, ...)
     if self.chatIntegration then
         self.chatIntegration:HandleAddonMessage(prefix, data, channel, sender)
+    end
+end
+
+function WizzyWig:CHAT_MSG_SAY(event, text, sender, ...)
+    if self.chatIntegration then
+        self.chatIntegration:OnChatMessage(event, text, sender, ...)
+    end
+end
+
+function WizzyWig:CHAT_MSG_EMOTE(event, text, sender, ...)
+    if self.chatIntegration then
+        self.chatIntegration:OnChatMessage(event, text, sender, ...)
     end
 end
 

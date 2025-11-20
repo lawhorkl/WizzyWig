@@ -114,29 +114,34 @@ end
 
 -- Send fake SAY/EMOTE message via custom channel
 function ChatIntegration:SendFakeMessage(message, displayChannel, styles)
-    local transportChannel, target = self:GetTransportChannel()
+    -- Always send the visible message first so everyone can see it
+    SendChatMessage(message, displayChannel)
+    self.addon:DebugPrint("Sent visible " .. displayChannel .. " message")
 
-    if not transportChannel then
-        -- No transport channel available - return false to trigger fallback
-        self.addon:DebugPrint("Color channel not ready for fake " .. displayChannel)
-        return false
+    -- Then send style metadata if we have styles and a transport channel
+    if styles and #styles > 0 then
+        local transportChannel, target = self:GetTransportChannel()
+
+        if transportChannel then
+            -- Determine message type
+            local msgType = displayChannel == "SAY" and self.wysiwyg.MESSAGE_TYPE.FAKE_SAY
+                                                     or self.wysiwyg.MESSAGE_TYPE.FAKE_EMOTE
+
+            -- Pack styles only (message already sent via SendChatMessage)
+            local packedStyles = self.wysiwyg:PackStyles(styles)
+            local fullData = string.char(msgType) .. packedStyles
+
+            self.addon:DebugPrint("Sending addon message: " .. #fullData .. " bytes total")
+
+            -- Send via addon message
+            self.wysiwyg:QueueAddonMessage(self.ADDON_PREFIX, fullData, transportChannel, target)
+
+            self.addon:DebugPrint("Sent " .. displayChannel .. " color metadata via " .. transportChannel)
+        else
+            self.addon:DebugPrint("No color channel available, sent plain " .. displayChannel)
+        end
     end
 
-    -- Determine message type
-    local msgType = displayChannel == "SAY" and self.wysiwyg.MESSAGE_TYPE.FAKE_SAY
-                                             or self.wysiwyg.MESSAGE_TYPE.FAKE_EMOTE
-
-    -- Pack message
-    local packedMessage = self.wysiwyg:PackMessage(message, styles)
-    local fullData = string.char(msgType) .. packedMessage
-
-    -- Send via addon message
-    self.wysiwyg:QueueAddonMessage(self.ADDON_PREFIX, fullData, transportChannel, target)
-
-    -- Display locally immediately (sender sees their own message)
-    self:DisplayFakeMessage(UnitName("player"), message, styles, displayChannel)
-
-    self.addon:DebugPrint("Sent fake " .. displayChannel .. " with colors")
     return true
 end
 
@@ -175,9 +180,13 @@ function ChatIntegration:HandleAddonMessage(prefix, data, channel, sender)
         return
     end
 
+    self.addon:DebugPrint("Received addon message: " .. #data .. " bytes total from " .. sender)
+
     -- Extract message type
     local msgType = string.byte(data, 1)
     local payload = data:sub(2)
+
+    self.addon:DebugPrint("Message type: " .. tostring(msgType) .. ", payload: " .. #payload .. " bytes")
 
     if msgType == self.wysiwyg.MESSAGE_TYPE.FAKE_SAY then
         self:HandleFakeMessage(payload, sender, "SAY")
@@ -192,19 +201,37 @@ end
 
 -- Handle fake SAY/EMOTE message
 function ChatIntegration:HandleFakeMessage(payload, sender, displayChannel)
-    -- Unpack message
-    local text, styles = self.wysiwyg:UnpackMessage(payload)
+    -- Now just unpacking styles (message already sent via SendChatMessage)
+    self.addon:DebugPrint("Received " .. displayChannel .. " styles, payload length: " .. #payload)
 
-    -- Don't display your own messages (already displayed locally)
+    local styles = self.wysiwyg:UnpackStyles(payload)
+
+    if not styles or #styles == 0 then
+        self.addon:DebugPrint("No styles unpacked from payload")
+        return
+    end
+
+    self.addon:DebugPrint("Unpacked " .. #styles .. " style(s)")
+
+    -- Don't process your own messages (you already see them with colors locally)
     local playerName = UnitName("player")
     local playerNameRealm = playerName .. "-" .. GetRealmName()
 
     if sender == playerName or sender == playerNameRealm then
+        self.addon:DebugPrint("Ignoring own message")
         return
     end
 
-    -- Display in chat frames
-    self:DisplayFakeMessage(sender, text, styles, displayChannel)
+    -- Try to match with recent message and apply styles
+    local matched = self.wysiwyg:MatchAndApplyStyles(sender, styles)
+
+    if not matched then
+        -- Message hasn't arrived yet, cache styles for when it does
+        self.wysiwyg:CachePendingStyles(sender, styles, time())
+        self.addon:DebugPrint("Cached " .. displayChannel .. " styles from " .. sender)
+    else
+        self.addon:DebugPrint("Applied " .. displayChannel .. " styles from " .. sender)
+    end
 end
 
 -- Handle real message styles
@@ -274,8 +301,9 @@ function ChatIntegration:HookChatFrames()
 
     -- Replace handler
     ChatFrame_MessageEventHandler = function(self, event, ...)
-        -- Intercept PARTY/RAID/GUILD messages
-        if event == "CHAT_MSG_PARTY" or event == "CHAT_MSG_RAID" or event == "CHAT_MSG_GUILD" then
+        -- Intercept SAY/EMOTE/PARTY/RAID/GUILD messages
+        if event == "CHAT_MSG_SAY" or event == "CHAT_MSG_EMOTE" or
+           event == "CHAT_MSG_PARTY" or event == "CHAT_MSG_RAID" or event == "CHAT_MSG_GUILD" then
             local text, sender = ...
 
             -- Check if we have style data for this message
