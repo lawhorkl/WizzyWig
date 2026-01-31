@@ -1,6 +1,6 @@
 # WizzyWig - WYSIWYG Chat Editor for Roleplayers
 
-![WoW Version](https://img.shields.io/badge/WoW-11.0.7-blue)
+![WoW Version](https://img.shields.io/badge/WoW-12.0.0-blue)
 [![CurseForge](https://img.shields.io/badge/CurseForge-Download-orange)](https://www.curseforge.com/wow/addons/wizzywig)
 
 **WizzyWig** is a What-You-See-Is-What-You-Get chat editor designed specifically for World of Warcraft roleplayers. Compose and preview your full emote or message before sending - see exactly what others will see!

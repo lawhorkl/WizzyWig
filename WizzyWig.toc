@@ -1,4 +1,4 @@
-## Interface: 110207
+## Interface: 120000
 ## Title: WizzyWig
 ## Notes: WYSIWYG chat editor for roleplayers - see your full emote before sending
 ## Author: Kyle Lawhorn

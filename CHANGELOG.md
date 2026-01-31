@@ -7,10 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-01-31
+
 ### Added
+- **WoW 12.0.0 compatibility** - Updated for The War Within Season 2
+  - Chat messaging lockdown detection (prevents sending during encounters/mythic+/rated PvP)
+  - Displays user-friendly error messages when chat is restricted
 - **Raid Warning channel** - New channel option in dropdown and settings
   - Available for raid leaders and assistants
   - Permission validation before sending
+
+### Changed
+- Updated Interface version to 120000 for WoW 12.0.0
+- Enhanced message sending validation with new lockdown checks
 
 ## [1.2.0] - 2025-11-17
 

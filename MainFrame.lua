@@ -261,6 +261,26 @@ function MainFrame:SendMessage(message, channel)
         return
     end
 
+    -- Check if chat messaging is locked down (12.0.0+ - combat/mythic+/rated PvP)
+    if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown then
+        local isLocked, reason = C_ChatInfo.InChatMessagingLockdown()
+        if isLocked then
+            local reasonText = "encounter/mythic+/rated PvP"
+            if reason == Enum.ChatMessagingLockdownReason.ActiveEncounter then
+                reasonText = "active encounter"
+            elseif reason == Enum.ChatMessagingLockdownReason.ActiveMythicKeystoneOrChallengeMode then
+                reasonText = "active mythic+ keystone"
+            elseif reason == Enum.ChatMessagingLockdownReason.ActivePvPMatch then
+                reasonText = "active rated PvP match"
+            end
+            self.addon:Print("Cannot send messages during " .. reasonText)
+            if self.frame then
+                self.frame:SetStatusText("Blocked: " .. reasonText)
+            end
+            return
+        end
+    end
+
     -- Convert texture markup to chat codes
     message = ConvertIconsForChat(message)
 
