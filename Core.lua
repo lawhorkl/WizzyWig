@@ -74,7 +74,7 @@ function WizzyWig:OnEnable()
     local emoteSplitterLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("EmoteSplitter")) or (IsAddOnLoaded and IsAddOnLoaded("EmoteSplitter"))
 
     if not emoteSplitterLoaded then
-        self:Print("|cFFFF0000WARNING: EmoteSplitter addon not found! WizzyWig is limited to the in-game chat message limit without it.|r")
+        self:Print("EmoteSplitter not found. WizzyWig will handle message splitting.")
     end
 
     -- Show welcome popup for first-time users

@@ -73,24 +73,15 @@ function MainFrame:Populate(container)
     editBox:SetNumLines(15)
     editBox:DisableButton(true)
     editBox:SetText("")
-
-    -- Enforce character limit if EmoteSplitter is not loaded
-    local emoteSplitterLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("EmoteSplitter")) or (IsAddOnLoaded and IsAddOnLoaded("EmoteSplitter"))
-    if not emoteSplitterLoaded then
-        editBox:SetMaxLetters(255) -- WoW chat message limit
-        editBox:SetLabel("Compose your message (255 char limit - EmoteSplitter not found):")
-    end
+    editBox:SetMaxLetters(0) -- 0 = unlimited (we handle splitting ourselves)
+    editBox:SetLabel("Compose your message:")
 
     -- Store reference for send function
     mainContainer.editBox = editBox
 
-    -- Integrate with Misspelled spell checker if available and EmoteSplitter is loaded
-    -- EmoteSplitter is required because Misspelled's color codes can cause character limit issues
-    -- without it (255 char limit - ~144 chars of markup = only ~111 usable chars)
-    local emoteSplitterLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("EmoteSplitter"))
-        or (IsAddOnLoaded and IsAddOnLoaded("EmoteSplitter"))
-
-    if emoteSplitterLoaded and Misspelled and Misspelled.WireUpEditBox then
+    -- Integrate with Misspelled spell checker if available
+    -- We now handle message splitting ourselves, so no EmoteSplitter required
+    if Misspelled and Misspelled.WireUpEditBox then
         local rawEditBox = editBox.editBox
 
         -- Create a compatibility wrapper for Misspelled
@@ -118,6 +109,28 @@ function MainFrame:Populate(container)
 
     -- Add editBox after toolbar
     mainContainer:AddChild(editBox)
+
+    -- Character counter with chunk info
+    local charCounter = AceGUI:Create("Label")
+    charCounter:SetFullWidth(true)
+    charCounter:SetText("0 characters (1 message)")
+    charCounter:SetColor(0.7, 0.7, 0.7)
+    mainContainer:AddChild(charCounter)
+
+    -- Update character counter on text change
+    editBox:SetCallback("OnTextChanged", function(_, _, text)
+        local len = string.len(text)
+        local chunks = math.max(1, math.ceil(len / 255))
+        local color = {0.7, 0.7, 0.7} -- gray
+        if len > 255 then
+            color = {1.0, 0.8, 0.0} -- orange for multi-chunk
+        end
+        if len > 1020 then -- 4+ chunks
+            color = {1.0, 0.3, 0.0} -- red for very long
+        end
+        charCounter:SetText(len .. " characters (" .. chunks .. " message" .. (chunks > 1 and "s" or "") .. ")")
+        charCounter:SetColor(unpack(color))
+    end)
 
     -- Bottom controls container
     local controlsGroup = AceGUI:Create("SimpleGroup")
@@ -281,49 +294,150 @@ function MainFrame:SendMessage(message, channel)
         end
     end
 
-    -- Convert texture markup to chat codes
-    message = ConvertIconsForChat(message)
-
-    -- Send to appropriate channel
-    if channel == "SAY" then
-        SendChatMessage(message, "SAY")
-        self.addon:DebugPrint("Sent to Say: " .. message)
-    elseif channel == "EMOTE" then
-        SendChatMessage(message, "EMOTE")
-        self.addon:DebugPrint("Sent to Emote: " .. message)
-    elseif channel == "PARTY" then
-        if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid(LE_PARTY_CATEGORY_HOME) then
-            SendChatMessage(message, "PARTY")
-            self.addon:DebugPrint("Sent to Party: " .. message)
-        else
+    -- Validate channel membership before processing
+    if channel == "PARTY" then
+        if not (IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid(LE_PARTY_CATEGORY_HOME)) then
             self.addon:Print("You are not in a party!")
             return
         end
-    elseif channel == "RAID" then
-        if IsInRaid(LE_PARTY_CATEGORY_HOME) then
-            SendChatMessage(message, "RAID")
-            self.addon:DebugPrint("Sent to Raid: " .. message)
-        else
+    elseif channel == "RAID" or channel == "RAID_WARNING" then
+        if not IsInRaid(LE_PARTY_CATEGORY_HOME) then
             self.addon:Print("You are not in a raid!")
             return
         end
-    elseif channel == "RAID_WARNING" then
-        if IsInRaid(LE_PARTY_CATEGORY_HOME) and (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) then
-            SendChatMessage(message, "RAID_WARNING")
-            self.addon:DebugPrint("Sent to Raid Warning: " .. message)
-        else
+        if channel == "RAID_WARNING" and not (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) then
             self.addon:Print("You must be raid leader or assistant to use Raid Warning!")
             return
         end
-    else
+    elseif channel ~= "SAY" and channel ~= "EMOTE" then
         self.addon:Print("Unknown channel: " .. tostring(channel))
         return
     end
 
-    -- Update status
-    if self.frame then
-        self.frame:SetStatusText("Message sent to " .. channel)
+    -- Convert texture markup to chat codes
+    message = ConvertIconsForChat(message)
+
+    -- Check if EmoteSplitter is loaded
+    local emoteSplitterLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded("EmoteSplitter"))
+        or (IsAddOnLoaded and IsAddOnLoaded("EmoteSplitter"))
+
+    if emoteSplitterLoaded then
+        -- Defer to EmoteSplitter - it hooks SendChatMessage globally
+        self.addon:DebugPrint("Using EmoteSplitter for message handling")
+        SendChatMessage(message, channel)
+        if self.frame then
+            self.frame:SetStatusText("Message sent to " .. channel)
+        end
+    else
+        -- Use our own splitting
+        self:SendMessageWithSplitting(message, channel)
     end
+end
+
+-- Send message with built-in splitting
+function MainFrame:SendMessageWithSplitting(message, channel)
+    local chunks = self:SplitMessage(message, 255)
+
+    if #chunks == 1 then
+        -- Single message, send immediately
+        SendChatMessage(chunks[1], channel)
+        self.addon:DebugPrint("Sent to " .. channel .. ": " .. chunks[1])
+        if self.frame then
+            self.frame:SetStatusText("Message sent to " .. channel)
+        end
+        return
+    end
+
+    -- Multiple chunks - send with delays
+    self.addon:DebugPrint("Splitting message into " .. #chunks .. " chunks")
+    if self.frame then
+        self.frame:SetStatusText("Sending " .. #chunks .. " messages to " .. channel .. "...")
+    end
+
+    local delay = 0.5
+    for i, chunk in ipairs(chunks) do
+        C_Timer.After((i - 1) * delay, function()
+            SendChatMessage(chunk, channel)
+            self.addon:DebugPrint("Sent chunk " .. i .. "/" .. #chunks)
+            if i == #chunks and self.frame then
+                self.frame:SetStatusText("All " .. #chunks .. " messages sent to " .. channel)
+            end
+        end)
+    end
+end
+
+-- Split message into chunks with word-boundary and UTF-8 safety
+function MainFrame:SplitMessage(message, maxLength)
+    maxLength = maxLength or 255
+
+    -- Phase 1: Protect WoW chat links with placeholders
+    local links = {}
+    local linkPattern = "(|c[fn][^|]*|H[^|]+|h(.-)|h|r)"
+    message = message:gsub(linkPattern, function(fullLink, visibleText)
+        table.insert(links, fullLink)
+        local linkId = #links
+        -- Replace with placeholder matching visible text length
+        local padding = string.rep("\002", math.max(0, #visibleText - 4))
+        return "\001\002" .. linkId .. padding .. "\003"
+    end)
+
+    -- Phase 2: Split at word boundaries
+    local chunks = {}
+    local pos = 1
+
+    while pos <= #message do
+        local endPos = pos + maxLength - 1
+
+        if endPos >= #message then
+            table.insert(chunks, message:sub(pos))
+            break
+        end
+
+        -- Look for space or placeholder marker within last 16 chars
+        local splitPos = endPos
+        for i = endPos, math.max(pos, endPos - 16), -1 do
+            local byte = message:byte(i)
+            if byte == 32 or byte == 1 then -- space or placeholder start
+                splitPos = i
+                break
+            end
+        end
+
+        -- If no space, find UTF-8 safe boundary
+        if splitPos == endPos then
+            splitPos = self:FindUTF8Boundary(message, endPos, math.max(pos, endPos - 16))
+        end
+
+        table.insert(chunks, message:sub(pos, splitPos))
+        pos = splitPos + 1
+
+        -- Skip leading spaces
+        while pos <= #message and message:byte(pos) == 32 do
+            pos = pos + 1
+        end
+    end
+
+    -- Phase 3: Restore links to chunks
+    for i, chunk in ipairs(chunks) do
+        chunks[i] = chunk:gsub("\001\002(%d+)\002*\003", function(linkId)
+            return links[tonumber(linkId)] or ""
+        end)
+    end
+
+    return chunks
+end
+
+-- Find UTF-8 safe split point (don't split multi-byte characters)
+function MainFrame:FindUTF8Boundary(message, startPos, minPos)
+    for i = startPos, minPos, -1 do
+        local byte = message:byte(i)
+        -- Safe: ASCII printable (32-127) or UTF-8 start (>=192)
+        -- Unsafe: Control chars (0-31) or UTF-8 continuation bytes (128-191)
+        if (byte >= 32 and byte < 128) or (byte >= 192) then
+            return i
+        end
+    end
+    return startPos
 end
 
 -- Get frame reference

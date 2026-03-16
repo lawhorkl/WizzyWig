@@ -27,15 +27,17 @@
 - Compose complex narratives without sending prematurely
 - Edit and refine before hitting send
 
-### ⚠️ **Character Limit Warning**
-- Visual warning at 255 characters (WoW's chat limit)
-- Integrates with **EmoteSplitter** for unlimited length
-- No more disconnects from oversized messages!
+### ✂️ **Built-in Message Splitting**
+- Automatic splitting for messages over 255 characters
+- Smart word-boundary detection preserves readability
+- UTF-8 safe (won't corrupt multi-byte characters)
+- Character counter shows how many messages will be sent
+- **EmoteSplitter** support: uses it if loaded, otherwise built-in splitting
 
-### 🔤 **Spell Checker Integration** (NEW!)
+### 🔤 **Spell Checker Integration**
 - Automatic integration with **Misspelled** addon
 - Real-time spell checking while composing
-- Requires EmoteSplitter to avoid character limit conflicts
+- Works seamlessly with built-in message splitting
 
 ### 💾 **Draft Preservation**
 - Your text persists when closing the window
@@ -86,14 +88,14 @@ Access settings via:
 
 ## 🤝 Recommended Addons
 
-- **[EmoteSplitter](https://www.curseforge.com/wow/addons/emotesplitter)** - Removes 255 character limit for emotes (highly recommended!)
-- **[Misspelled](https://www.curseforge.com/wow/addons/misspelled)** - Spell checker integration (requires EmoteSplitter)
+- **[EmoteSplitter](https://www.curseforge.com/wow/addons/emotesplitter)** - Alternative message splitter (WizzyWig will use it if present, otherwise uses built-in splitting)
+- **[Misspelled](https://www.curseforge.com/wow/addons/misspelled)** - Spell checker integration
 - **Total RP 3** - Enhanced roleplay profiles
 - **MyRolePlay** - Character description addon
 
 ## 🐛 Known Issues
 
-- Spell checker integration only works when EmoteSplitter is loaded (by design, to avoid character limit conflicts)
+- Multi-message sends use 0.5s delays between chunks to avoid spam throttling
 - Text persists between sessions (feature, not bug!) but can be changed in settings
 
 ## 📝 Changelog
