@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-04-21
+
+### Changed
+- Updated Interface version to 120005 for WoW 12.0.5 compatibility
+
+## [1.5.0] - 2026-03-16
+
+### Added
+- **Built-in text splitting** - Native message splitting functionality
+  - Automatically splits messages longer than 255 characters
+  - No longer requires EmoteSplitter addon dependency
+  - Seamless multi-message sending for long emotes and chat messages
+
+### Changed
+- Updated OptionalDeps to remove EmoteSplitter requirement
+- Character limit warnings and UI now reference built-in splitting
+
+### Removed
+- **EmoteSplitter integration** - Replaced with native text splitting
+  - EmoteSplitter addon no longer required
+  - All splitting functionality now handled internally
+
 ## [1.4.0] - 2026-01-31
 
 ### Added
@@ -160,6 +182,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **1.6.x** - WoW 12.0.5 compatibility
+- **1.5.x** - Built-in text splitting
+- **1.4.x** - WoW 12.0.0 compatibility, Raid Warning channel
 - **1.2.x** - Spell checker integration
 - **1.1.x** - EmoteSplitter integration and chat limit management
 - **1.0.x** - Polish and first stable release
