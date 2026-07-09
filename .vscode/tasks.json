@@ -7,6 +7,8 @@
             "command": "bash",
             "args": [
                 "./release.sh",
+                "-g",
+                "12.0.7",
                 "-d"
             ],
             "options": {
@@ -33,6 +35,8 @@
             "command": "bash",
             "args": [
                 "./release.sh",
+                "-g",
+                "12.0.7",
                 "-r"
             ],
             "options": {
@@ -56,6 +60,8 @@
             "command": "bash",
             "args": [
                 "./release.sh",
+                "-g",
+                "12.0.7",
                 "-z"
             ],
             "options": {

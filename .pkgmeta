@@ -50,6 +50,7 @@ ignore:
   - "*.zip"
   - "*.gif"
   - Screenshot.gif
+  - AGENTS.md
   - CLAUDE.md
   - KB_BUILD_RECIPE.txt
 
