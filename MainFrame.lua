@@ -5,6 +5,31 @@ local AceGUI = LibStub("AceGUI-3.0")
 -- MainFrame class
 local MainFrame = {}
 MainFrame.__index = MainFrame
+local CHAT_CHUNK_SIZE = 220
+
+local function SendChatMessageSafe(message, channel)
+    local ctl = _G.ChatThrottleLib
+    if ctl and ctl.SendChatMessage then
+        local ok = pcall(function()
+            ctl:SendChatMessage("ALERT", "WizzyWig", message, channel)
+        end)
+        if ok then
+            return true
+        end
+    end
+
+    if C_ChatInfo and C_ChatInfo.SendChatMessage then
+        C_ChatInfo.SendChatMessage(message, channel)
+        return true
+    end
+
+    if SendChatMessage then
+        SendChatMessage(message, channel)
+        return true
+    end
+
+    return false
+end
 
 -- Constructor
 function MainFrame:New(wizzywigAddon)
@@ -164,8 +189,8 @@ function MainFrame:Populate(container)
     sendButton:SetText("Send Message")
     sendButton:SetWidth(150)
     sendButton:SetCallback("OnClick", function()
-        self:SendMessage(editBox:GetText(), channelDropdown:GetValue())
-        if self.addon.db.profile.clearOnSend then
+        local sent = self:SendMessage(editBox:GetText(), channelDropdown:GetValue())
+        if sent and self.addon.db.profile.clearOnSend then
             editBox:SetText("")
         end
         editBox:SetFocus()
@@ -262,7 +287,12 @@ end
 function MainFrame:SendMessage(message, channel)
     if not self.addon.db.profile.enabled then
         self.addon:Print("Addon is disabled")
-        return
+        return false
+    end
+
+    if self.isSending then
+        self.addon:Print("A message is already being sent. Please wait for it to finish.")
+        return false
     end
 
     -- Trim whitespace
@@ -271,26 +301,18 @@ function MainFrame:SendMessage(message, channel)
     -- Check for empty message
     if message == "" then
         self.addon:Print("Cannot send empty message")
-        return
+        return false
     end
 
-    -- Check if chat messaging is locked down (12.0.0+ - combat/mythic+/rated PvP)
+    -- Check if chat messaging is locked down.
     if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown then
-        local isLocked, reason = C_ChatInfo.InChatMessagingLockdown()
+        local isLocked = C_ChatInfo.InChatMessagingLockdown()
         if isLocked then
-            local reasonText = "encounter/mythic+/rated PvP"
-            if reason == Enum.ChatMessagingLockdownReason.ActiveEncounter then
-                reasonText = "active encounter"
-            elseif reason == Enum.ChatMessagingLockdownReason.ActiveMythicKeystoneOrChallengeMode then
-                reasonText = "active mythic+ keystone"
-            elseif reason == Enum.ChatMessagingLockdownReason.ActivePvPMatch then
-                reasonText = "active rated PvP match"
-            end
-            self.addon:Print("Cannot send messages during " .. reasonText)
+            self.addon:Print("Cannot send messages while chat messaging is restricted.")
             if self.frame then
-                self.frame:SetStatusText("Blocked: " .. reasonText)
+                self.frame:SetStatusText("Blocked: chat messaging restricted")
             end
-            return
+            return false
         end
     end
 
@@ -298,72 +320,75 @@ function MainFrame:SendMessage(message, channel)
     if channel == "PARTY" then
         if not (IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid(LE_PARTY_CATEGORY_HOME)) then
             self.addon:Print("You are not in a party!")
-            return
+            return false
         end
     elseif channel == "RAID" or channel == "RAID_WARNING" then
         if not IsInRaid(LE_PARTY_CATEGORY_HOME) then
             self.addon:Print("You are not in a raid!")
-            return
+            return false
         end
         if channel == "RAID_WARNING" and not (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) then
             self.addon:Print("You must be raid leader or assistant to use Raid Warning!")
-            return
+            return false
         end
     elseif channel ~= "SAY" and channel ~= "EMOTE" then
         self.addon:Print("Unknown channel: " .. tostring(channel))
-        return
+        return false
     end
 
     -- Convert texture markup to chat codes
     message = ConvertIconsForChat(message)
 
-    -- Check if EmoteSplitter is loaded
-    local emoteSplitterLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded("EmoteSplitter"))
-        or (IsAddOnLoaded and IsAddOnLoaded("EmoteSplitter"))
-
-    if emoteSplitterLoaded then
-        -- Defer to EmoteSplitter - it hooks SendChatMessage globally
-        self.addon:DebugPrint("Using EmoteSplitter for message handling")
-        SendChatMessage(message, channel)
-        if self.frame then
-            self.frame:SetStatusText("Message sent to " .. channel)
-        end
-    else
-        -- Use our own splitting
-        self:SendMessageWithSplitting(message, channel)
-    end
+    return self:SendMessageWithSplitting(message, channel)
 end
 
 -- Send message with built-in splitting
 function MainFrame:SendMessageWithSplitting(message, channel)
-    local chunks = self:SplitMessage(message, 255)
+    local chunks = self:SplitMessage(message, CHAT_CHUNK_SIZE)
 
     if #chunks == 1 then
         -- Single message, send immediately
-        SendChatMessage(chunks[1], channel)
+        self.isSending = true
+        if not SendChatMessageSafe(chunks[1], channel) then
+            self.isSending = false
+            self.addon:Print("Unable to send message: chat API is unavailable.")
+            return false
+        end
+        C_Timer.After(0.5, function()
+            self.isSending = false
+        end)
         self.addon:DebugPrint("Sent to " .. channel .. ": " .. chunks[1])
         if self.frame then
             self.frame:SetStatusText("Message sent to " .. channel)
         end
-        return
+        return true
     end
 
-    -- Multiple chunks - send with delays
+    -- Multiple chunks - queue through ChatThrottleLib when available.
+    self.isSending = true
     self.addon:DebugPrint("Splitting message into " .. #chunks .. " chunks")
     if self.frame then
-        self.frame:SetStatusText("Sending " .. #chunks .. " messages to " .. channel .. "...")
+        self.frame:SetStatusText("Queueing " .. #chunks .. " messages to " .. channel .. "...")
     end
 
-    local delay = 0.5
     for i, chunk in ipairs(chunks) do
-        C_Timer.After((i - 1) * delay, function()
-            SendChatMessage(chunk, channel)
-            self.addon:DebugPrint("Sent chunk " .. i .. "/" .. #chunks)
-            if i == #chunks and self.frame then
-                self.frame:SetStatusText("All " .. #chunks .. " messages sent to " .. channel)
+        if not SendChatMessageSafe(chunk, channel) then
+            self.addon:Print("Unable to queue message chunk: chat API is unavailable.")
+            self.isSending = false
+            if self.frame then
+                self.frame:SetStatusText("Send failed")
             end
-        end)
+            return false
+        end
+        self.addon:DebugPrint("Queued chunk " .. i .. "/" .. #chunks)
     end
+
+    self.isSending = false
+    if self.frame then
+        self.frame:SetStatusText("Queued " .. #chunks .. " messages to " .. channel)
+    end
+
+    return true
 end
 
 -- Split message into chunks with word-boundary and UTF-8 safety
@@ -431,10 +456,12 @@ end
 function MainFrame:FindUTF8Boundary(message, startPos, minPos)
     for i = startPos, minPos, -1 do
         local byte = message:byte(i)
-        -- Safe: ASCII printable (32-127) or UTF-8 start (>=192)
-        -- Unsafe: Control chars (0-31) or UTF-8 continuation bytes (128-191)
-        if (byte >= 32 and byte < 128) or (byte >= 192) then
+        -- Safe: ASCII printable (32-127). If we land on a UTF-8 start byte,
+        -- split before it so the multibyte character stays in the next chunk.
+        if byte >= 32 and byte < 128 then
             return i
+        elseif byte >= 192 then
+            return math.max(minPos, i - 1)
         end
     end
     return startPos

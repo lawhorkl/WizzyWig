@@ -32,6 +32,9 @@ externals:
   Libs/LibDBIcon-1.0:
     url: https://repos.wowace.com/wow/libdbicon-1-0/trunk/LibDBIcon-1.0
     tag: latest
+  Libs/ChatThrottleLib:
+    url: https://repos.wowace.com/wow/chatthrottlelib/trunk
+    tag: latest
 
 # Files and directories to ignore when packaging
 ignore:
